@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101a38" />
+  <title>FlyBrainWeb — Respostas reais da Axobug</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101a38;
+      --panel: rgba(18, 30, 67, .94);
+      --border: rgba(143, 185, 255, .42);
+      --text: #f4f7ff;
+      --muted: #b5c5e5;
+      --blue: #8cc7ff;
+      --cyan: #65f2ff;
+      --yellow: #ffe18a;
+      --green: #8bf5bb;
+      --red: #ff7885;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      color: var(--text);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 75% 15%, #1a2c5d, var(--bg) 60%);
+    }
+    #viewport { position: fixed; inset: 0; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+    .panel {
+      position: fixed;
+      z-index: 5;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 18px 60px #0008;
+      backdrop-filter: blur(16px);
+    }
+    #controls {
+      top: 18px; left: 18px; width: min(370px, calc(100vw - 36px));
+      max-height: calc(100vh - 36px); overflow-y: auto; padding: 19px;
+    }
+    #response-panel {
+      top: 18px; right: 18px; width: min(390px, calc(100vw - 36px));
+      max-height: calc(100vh - 300px); padding: 0;
+    }
+    #response-panel > summary, #info > summary {
+      padding: 16px 19px; color: var(--blue); font-size: 12px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+    }
+    #response-panel .panel-content {
+      max-height: calc(100vh - 360px); overflow-y: auto; padding: 0 19px 19px;
+    }
+    #info { right: 18px; bottom: 18px; width: min(390px, calc(100vw - 36px)); max-height: 220px; overflow-y: auto; padding: 0; }
+    #info .info-content { max-height: 180px; overflow-y: auto; padding: 0 19px 16px; }
+    h1, h2, p { margin: 0; }
+    h1 { color: var(--blue); font-size: 20px; }
+    h1 span { color: var(--green); font-size: 11px; letter-spacing: .08em; margin-left: 6px; }
+    h2 { margin-bottom: 11px; color: var(--blue); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+    .subtitle { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .section { padding: 15px 0; border-bottom: 1px solid #7ea4ff2b; }
+    .section:last-child { border-bottom: 0; padding-bottom: 0; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 7px 0; }
+    .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .value { color: var(--yellow); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px currentColor; }
+    .dot.ok { background: var(--green); }
+    .dot.loading { background: var(--yellow); }
+    button, input, select { font: inherit; color: var(--text); }
+    button {
+      width: 100%; padding: 11px; margin-top: 8px; cursor: pointer;
+      border: 1px solid #82b7ff66; border-radius: 9px;
+      background: linear-gradient(135deg, #176cac, #214a91); font-weight: 700;
+      transition: .18s ease;
+    }
+    button:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    button:disabled { opacity: .55; cursor: wait; transform: none; }
+    button.secondary { background: #ffffff0d; }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .buttons button { margin-top: 0; }
+    .field { display: grid; gap: 6px; margin-top: 11px; }
+    .field input, .field select { width: 100%; padding: 8px; border: 1px solid #82b7ff55; border-radius: 8px; background: #ffffff0d; }
+    .experiment-status { min-height: 43px; margin-top: 10px; padding: 9px; border-left: 2px solid var(--cyan); border-radius: 6px; color: var(--muted); background: #5ce8ff0d; font-size: 12px; }
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .card { padding: 9px; border: 1px solid #7ea4ff2b; border-radius: 9px; background: #ffffff08; }
+    .card small { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+    .card strong { display: block; margin-top: 4px; color: var(--yellow); font-size: 17px; font-variant-numeric: tabular-nums; }
+    .bar-row { display: grid; grid-template-columns: 78px 1fr 48px; align-items: center; gap: 7px; margin: 7px 0; font-size: 11px; }
+    .bar-label, .bar-value { color: var(--muted); }
+    .bar-value { color: var(--yellow); text-align: right; font-variant-numeric: tabular-nums; }
+    .bar-track { height: 6px; overflow: hidden; border-radius: 99px; background: #ffffff12; }
+    .bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width .25s ease; }
+    .bar-fill.drive { background: linear-gradient(90deg, var(--green), var(--yellow)); }
+    .readout { margin-top: 10px; padding: 9px; border-radius: 7px; color: var(--muted); background: #ffffff08; font-size: 11px; }
+    .frame-chart { display: flex; align-items: flex-end; gap: 2px; height: 48px; margin-top: 8px; padding: 5px; border-radius: 7px; background: #ffffff08; overflow: hidden; }
+    .frame-bar { flex: 1 1 0; min-width: 2px; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, var(--cyan), #3974df); }
+    .readout strong { color: var(--yellow); }
+    .shadow-panel { margin-top: 11px; padding: 10px; border: 1px solid #ce8bff55; border-radius: 10px; background: #ce8bff0b; }
+    .shadow-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+    .shadow-stat { padding: 7px; border-radius: 7px; background: #ffffff0b; text-align: center; }
+    .shadow-stat small { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
+    .shadow-stat strong { display: block; margin-top: 3px; color: var(--yellow); font-size: 16px; }
+    details { margin-top: 10px; color: var(--muted); font-size: 11px; }
+    summary { cursor: pointer; color: var(--blue); }
+    pre { max-height: 220px; overflow: auto; padding: 9px; border-radius: 7px; color: #b9d6ff; background: #050817; font: 10px/1.45 ui-monospace, monospace; white-space: pre-wrap; }
+    .history-item { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #7ea4ff1c; color: var(--muted); font-size: 11px; }
+    .history-item:last-child { border-bottom: 0; }
+    .history-item strong { color: var(--yellow); }
+    .note { color: var(--muted); font-size: 12px; }
+    #info p { color: var(--muted); font-size: 12px; }
+    #info p + p { margin-top: 8px; }
+    #info strong { color: var(--yellow); }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; color: var(--green); background: #83f0b014; font-size: 11px; }
+    #error { margin-top: 10px; color: #ffb1ba; font-size: 12px; }
+    @media (max-width: 720px) {
+      #controls { top: 10px; left: 10px; width: min(330px, calc(100vw - 20px)); max-height: 48vh; padding: 14px; }
+      #response-panel { top: auto; right: 10px; bottom: 10px; width: calc(100vw - 20px); max-height: 45vh; padding: 0; }
+      #response-panel .panel-content { max-height: 40vh; padding: 0 14px 14px; }
+      #info { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="viewport" aria-label="Animação 3D da mosca"></div>
+
+  <section id="controls" class="panel">
+    <h1>FlyBrainWeb <span>AXOBUG REAL</span></h1>
+    <p class="subtitle">Resposta neural real → comportamento visual</p>
+
+    <div class="section">
+      <h2>Conexão</h2>
+      <div class="row"><span class="label">Backend local</span><span id="backendStatus" class="status"><i class="dot loading"></i><span>Verificando…</span></span></div>
+      <div class="row"><span class="label">Fonte</span><span class="badge">Axobug Neuro API</span></div>
+      <div class="row"><span class="label">Modelo</span><span id="model" class="value">—</span></div>
+    </div>
+
+    <div class="section">
+      <h2>Experimentos reais</h2>
+      <div class="buttons">
+        <button id="foodBtn">Cheiro → andar</button>
+        <button id="loomBtn">Objeto → pular</button>
+      </div>
+      <label class="field"><span class="label">Estimulo enviado à Axobug</span>
+        <select id="stimulusSelect">
+          <option value="sugar">sugar · doce</option>
+          <option value="loom">loom · sombra</option>
+          <option value="food" selected>food · cheiro</option>
+          <option value="touch">touch · toque</option>
+          <option value="song">song · som</option>
+          <option value="pheromone">pheromone · feromônio</option>
+          <option value="colour">colour · cor</option>
+          <option value="humid">humid · umidade</option>
+          <option value="heat">heat · temperatura</option>
+          <option value="bitter">bitter · amargo</option>
+          <option value="none">none · controle sem estímulo</option>
+        </select>
+      </label>
+      <label class="field"><span class="label">Intensidade do estímulo (0–2)</span><input id="intensity" type="number" min="0" max="2" step="0.1" value="1" /></label>
+      <label class="field"><span class="label">Seed</span><input id="seed" type="number" min="0" max="4294967295" step="1" value="42" /></label>
+      <button id="runBtn" class="primary">Executar estímulo selecionado</button>
+      <div class="readout">Cada consulta envia <strong>um único estímulo</strong> para a API. A animação é escolhida pela resposta real, não por uma lista fixa.</div>
+      <div class="shadow-panel">
+        <button id="shadowRunBtn" class="secondary">Shadow Run — 5 sombras</button>
+        <div class="shadow-stats">
+          <div class="shadow-stat"><small>Sombras</small><strong id="shadowScore">0/5</strong></div>
+          <div class="shadow-stat"><small>Escape</small><strong id="shadowEscape">—</strong></div>
+          <div class="shadow-stat"><small>Chamadas</small><strong id="shadowCalls">0</strong></div>
+        </div>
+        <div id="shadowStatus" class="readout">A comida inicia a corrida; cada sombra dispara uma consulta `loom`.</div>
+      </div>
+      <div id="experimentStatus" class="experiment-status">Escolha um experimento. A resposta vem da API Axobug.</div>
+      <div id="error" hidden></div>
+    </div>
+
+    <div class="section">
+      <h2>Controle</h2>
+      <button id="clearBtn" class="secondary">Limpar animação</button>
+    </div>
+  </section>
+
+  <details id="response-panel" class="panel">
+    <summary>Resposta neural recebida</summary>
+    <div class="panel-content">
+    <div class="section">
+      <h2>Resposta neural recebida</h2>
+      <div class="cards">
+        <div class="card"><small>Total de spikes</small><strong id="totalSpikes">—</strong></div>
+        <div class="card"><small>Neurônios ativos</small><strong id="responding">—</strong></div>
+        <div class="card"><small>Canal walk</small><strong id="channelWalk">—</strong></div>
+        <div class="card"><small>Canal escape</small><strong id="channelEscape">—</strong></div>
+        <div class="card"><small>Drive walk</small><strong id="driveWalk">—</strong></div>
+        <div class="card"><small>Drive escape</small><strong id="driveEscape">—</strong></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Leitura da resposta</h2>
+      <div id="interpretation" class="readout">Faça uma consulta para interpretar o que o cérebro respondeu.</div>
+      <div id="responseMeta" class="readout">Aguardando uma resposta completa.</div>
+      <h2 style="margin-top:14px">Canais neurais</h2>
+      <div id="channelBars"></div>
+      <h2 style="margin-top:14px">Comandos de movimento</h2>
+      <div id="driveBars"></div>
+      <button id="framesBtn" class="secondary">Buscar frames completos</button>
+      <div id="framesInfo" class="readout">Frames são uma segunda requisição e podem consumir mais cota.</div>
+      <div id="frameChart" class="frame-chart" aria-label="Atividade por frame"></div>
+      <details><summary>Ver requisição e resposta JSON</summary><pre id="rawResponse">Nenhuma resposta ainda.</pre></details>
+    </div>
+
+    <div class="section">
+      <h2>Histórico local</h2>
+      <div id="history"><div class="readout">Nenhum experimento ainda.</div></div>
+    </div>
+    </div>
+  </details>
+
+  <details id="info" class="panel">
+    <summary>O que está acontecendo?</summary>
+    <div class="info-content">
+      <p><strong>Cheiro:</strong> enviamos <code>food</code>; o valor <code>drive.walk</code> controla a caminhada.</p>
+      <p><strong>Objeto:</strong> enviamos <code>loom</code>; o valor <code>drive.escape</code> controla a altura do pulo.</p>
+      <p>Os valores são lidos de <code>brain.drive</code> e <code>brain.channels</code> da resposta real.</p>
+      <p><strong>Importante:</strong> a animação é uma visualização do comando do modelo; não é uma prova de que o estímulo produz aquele comportamento na mosca real.</p>
+      <p>Use o seletor para tentar <code>sugar</code>, <code>touch</code>, <code>song</code>, <code>pheromone</code>, <code>colour</code>, <code>humid</code>, <code>heat</code>, <code>bitter</code> e o controle <code>none</code>.</p>
+      <p><strong>TODO FlyWire:</strong> adicionar neurônios e sinapses 3D reais quando o download/autenticação do FlyWire estiver configurado.</p>
+    </div>
+  </details>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    "use strict";
+    const configuredApi = window.FLYBRAIN_API_URL || document.querySelector('meta[name="flybrain-api"]')?.content;
+    const local = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.protocol === "file:";
+    const API_URL = (configuredApi || (local ? "http://localhost:8000" : location.origin)).replace(/\/$/, "");
+    const $ = id => document.getElementById(id);
+    const ui = {
+      backend: $("backendStatus"), model: $("model"), food: $("foodBtn"), loom: $("loomBtn"),
+      intensity: $("intensity"), stimulus: $("stimulusSelect"), run: $("runBtn"), shadowRun: $("shadowRunBtn"), shadowScore: $("shadowScore"), shadowEscape: $("shadowEscape"), shadowCalls: $("shadowCalls"), shadowStatus: $("shadowStatus"), seed: $("seed"), status: $("experimentStatus"), error: $("error"),
+      total: $("totalSpikes"), responding: $("responding"), channelWalk: $("channelWalk"),
+      channelEscape: $("channelEscape"), driveWalk: $("driveWalk"), driveEscape: $("driveEscape"),
+      interpretation: $("interpretation"), meta: $("responseMeta"), channelBars: $("channelBars"), driveBars: $("driveBars"),
+      frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn")
+    };
+    let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle;
+    let behavior = { kind: "idle", started: 0, duration: 0, strength: 0 };
+    let shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: 0, token: 0 };
+    let lastBrain = null, lastRequest = null, history = [];
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const fixed = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
+    const STIMULUS_INFO = {
+      sugar: ["Doce", "paladar"],
+      loom: ["Sombra", "visão"],
+      food: ["Cheiro", "olfato"],
+      touch: ["Toque", "tato"],
+      song: ["Canção", "audição"],
+      pheromone: ["Feromônio", "olfato"],
+      colour: ["Cor", "visão"],
+      humid: ["Umidade", "umididade"],
+      heat: ["Calor", "temperatura"],
+      bitter: ["Amargo", "paladar"],
+      none: ["Controle", "sem estímulo"]
+    };
+
+    function setBackend(text, state = "") { ui.backend.innerHTML = `<i class="dot ${state}"></i><span>${text}</span>`; }
+    function showError(message) { ui.error.hidden = !message; ui.error.textContent = message || ""; }
+
+    async function checkBackend() {
+      try {
+        const response = await fetch(`${API_URL}/api/health`, { cache: "no-store" });
+        if (!response.ok) throw new Error("health");
+        setBackend("Conectado", "ok");
+      } catch (_) { setBackend("Indisponível"); }
+    }
+
+    function createFly() {
+      fly = new THREE.Group(); fly.position.set(0, -1.1, 0); fly.scale.setScalar(.9);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd47a43, roughness: .48 });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x2b1d36, roughness: .38 });
+      const wingMat = new THREE.MeshBasicMaterial({ color: 0x9af4ff, transparent: true, opacity: .5, side: THREE.DoubleSide, depthWrite: false });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(.3, 16, 10), bodyMat); body.scale.set(.72, .58, 1.2); fly.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 8), darkMat); head.position.set(0, .04, -.38); fly.add(head);
+      [-1, 1].forEach(side => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff786e })); eye.position.set(side * .13, .07, -.53); fly.add(eye);
+        const shape = new THREE.Shape(); shape.moveTo(0, 0); shape.lineTo(.78, .2); shape.lineTo(.66, -.24); shape.closePath();
+        const wing = new THREE.Mesh(new THREE.ShapeGeometry(shape), wingMat); wing.position.set(side * .08, .13, .02); wing.scale.x = side; wing.rotation.y = side * .3;
+        if (side < 0) leftWing = wing; else rightWing = wing; fly.add(wing);
+        for (let i = 0; i < 3; i++) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(.012, .018, .38, 6), darkMat); leg.position.set(side * .19, -.17, -.2 + i * .2); leg.rotation.z = side * .55; fly.add(leg); }
+      });
+      const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 48; const ctx = canvas.getContext("2d"); ctx.font = "700 20px monospace"; ctx.fillStyle = "#ffe18a"; ctx.fillText("MOSCA", 75, 31);
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false })); label.position.set(0, .5, 0); label.scale.set(.6, .11, 1); fly.add(label);
+      flyProboscis = new THREE.Mesh(new THREE.CylinderGeometry(.012, .025, .28, 6), new THREE.MeshBasicMaterial({ color: 0xff9b86 })); flyProboscis.rotation.x = Math.PI / 2; flyProboscis.position.set(0, -.04, -.62); flyProboscis.visible = false; fly.add(flyProboscis);
+      scene.add(fly);
+    }
+
+    function createShadowObstacle() {
+      const geometry = new THREE.BoxGeometry(.34, .9, 1.1);
+      shadowObstacle = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0x321b58, transparent: true, opacity: .88 }));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: 0xff9a73, transparent: true, opacity: .95 }));
+      shadowObstacle.add(edges);
+      shadowObstacle.position.set(3.2, -1.15, 0); shadowObstacle.visible = false; scene.add(shadowObstacle);
+    }
+
+    function initThree() {
+      scene = new THREE.Scene(); scene.background = new THREE.Color(0x101a38); scene.fog = new THREE.FogExp2(0x101a38, .055);
+      camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, .01, 100); camera.position.set(4, 2.5, 5);
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(innerWidth, innerHeight); $("viewport").appendChild(renderer.domElement);
+      controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.target.set(0, -.2, 0);
+      scene.add(new THREE.HemisphereLight(0xd5e8ff, 0x15234d, 1.45)); const key = new THREE.PointLight(0x77eaff, 2.4, 20); key.position.set(3, 4, 4); scene.add(key); const warm = new THREE.PointLight(0xffa27e, 1.15, 12); warm.position.set(-3, 1, 2); scene.add(warm);
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshStandardMaterial({ color: 0x1b315d, roughness: .95 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -1.65; scene.add(ground);
+      const grid = new THREE.GridHelper(10, 20, 0x6d9bd7, 0x304b7d); grid.position.y = -1.63; grid.material.transparent = true; grid.material.opacity = .7; scene.add(grid);
+      createShadowObstacle(); createFly(); addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+    }
+
+    function updateFly(now) {
+      const baseY = -1.1; fly.position.set(0, baseY, 0); fly.rotation.set(0, 0, 0); if (flyProboscis) flyProboscis.visible = false;
+      const flap = Math.sin(now * 17) * .18; if (leftWing) leftWing.rotation.z = flap; if (rightWing) rightWing.rotation.z = -flap;
+      if (!behavior.kind || behavior.kind === "idle") return;
+      const p = clamp((now - behavior.started) / behavior.duration, 0, 1); const strength = clamp(behavior.strength, 0, 1);
+      if (behavior.kind === "walk") {
+        fly.position.x = -1.1 + p * (1.2 + strength * 1.8); fly.position.y = baseY + Math.sin(p * Math.PI * 8) * .035; fly.rotation.z = Math.sin(p * Math.PI * 8) * .04;
+        if (leftWing) leftWing.rotation.z = Math.sin(now * 23) * .32; if (rightWing) rightWing.rotation.z = -Math.sin(now * 23) * .32;
+      } else if (behavior.kind === "feed") {
+        fly.position.x = p * .7; fly.position.y = baseY + Math.sin(p * Math.PI) * .08; if (flyProboscis) flyProboscis.visible = p > .15 && p < .85;
+      } else if (behavior.kind === "flap") {
+        fly.position.y = baseY + Math.sin(now * 26) * .06 * strength; if (leftWing) leftWing.rotation.z = Math.sin(now * 38) * .65 * strength; if (rightWing) rightWing.rotation.z = -Math.sin(now * 38) * .65 * strength;
+      } else if (behavior.kind === "turn") {
+        fly.position.x = (p - .5) * .8; fly.rotation.y = Math.sin(p * Math.PI * 2) * .5 * strength;
+      } else {
+        const arc = 4 * p * (1 - p); fly.position.x = -.5 + p * 1.2; fly.position.y = baseY + arc * 1.8 * strength; fly.rotation.x = -Math.sin(p * Math.PI) * .35;
+        if (leftWing) leftWing.rotation.z = Math.sin(now * 34) * .55; if (rightWing) rightWing.rotation.z = -Math.sin(now * 34) * .55;
+      }
+      if (p >= 1) behavior = { kind: "idle", started: 0, duration: 0, strength: 0 };
+    }
+
+    function renderBars(container, values, maxValue, drive = false) {
+      container.replaceChildren();
+      Object.entries(values || {}).forEach(([key, raw]) => {
+        const value = Number(raw) || 0;
+        const row = document.createElement("div"); row.className = "bar-row";
+        const label = document.createElement("span"); label.className = "bar-label"; label.textContent = key;
+        const track = document.createElement("span"); track.className = "bar-track";
+        const fill = document.createElement("span"); fill.className = `bar-fill${drive ? " drive" : ""}`; fill.style.width = `${clamp(value / (maxValue || 1), 0, 1) * 100}%`;
+        track.appendChild(fill);
+        const readout = document.createElement("span"); readout.className = "bar-value"; readout.textContent = fixed(value, drive ? 2 : 1);
+        row.append(label, track, readout); container.appendChild(row);
+      });
+    }
+
+    function renderHistory() {
+      ui.history.replaceChildren();
+      if (!history.length) { ui.history.innerHTML = '<div class="readout">Nenhum experimento ainda.</div>'; return; }
+      history.forEach(item => {
+        const row = document.createElement("div"); row.className = "history-item";
+        const left = document.createElement("span"); left.textContent = `${item.stimulus} · ${item.intensity.toFixed(1)} · seed ${item.seed}`;
+        const right = document.createElement("strong"); right.textContent = `${item.total} spikes`;
+        row.append(left, right); ui.history.appendChild(row);
+      });
+    }
+
+    function updateResponse(brain, request = null) {
+      lastBrain = brain; if (request) lastRequest = request;
+      ui.model.textContent = brain.model || "—"; ui.total.textContent = brain.total_spikes ?? "—"; ui.responding.textContent = brain.responding_neurons ?? "—";
+      ui.channelWalk.textContent = `${fixed(brain.channels?.walk)} Hz`; ui.channelEscape.textContent = `${fixed(brain.channels?.escape)} Hz`;
+      ui.driveWalk.textContent = fixed(brain.drive?.walk); ui.driveEscape.textContent = fixed(brain.drive?.escape);
+      ui.meta.textContent = `ID ${brain.id || "—"} · compute ${brain.compute_ms ?? "—"} ms · stimulated ${brain.stimulated_neurons ?? "—"} · conexões ${brain.connections ?? "—"}`;
+      ui.frameChart.replaceChildren(); ui.framesInfo.textContent = "Clique em Buscar frames completos para mostrar a atividade por frame.";
+      const maxChannel = Math.max(1, ...Object.values(brain.channels || {}).map(value => Number(value) || 0));
+      renderBars(ui.channelBars, brain.channels, maxChannel); renderBars(ui.driveBars, brain.drive, 1, true);
+      const stimulus = request?.stimulus || brain.stimulus || "estímulo";
+      const [name, sense] = STIMULUS_INFO[stimulus] || [stimulus, "estímulo"];
+      const strongest = Object.entries(brain.drive || {}).sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))[0];
+      if (stimulus === "none") ui.interpretation.innerHTML = `Controle <strong>none</strong>: nenhum estímulo externo foi enviado. <strong>${strongest ? `${strongest[0]}=${fixed(strongest[1])}` : "sem comando"}</strong>.`;
+      else ui.interpretation.innerHTML = `Estímulo <strong>${stimulus}</strong> (${name}, ${sense}) recebeu a resposta mais forte em <strong>${strongest ? strongest[0] : "—"}</strong>.`;
+      ui.raw.textContent = JSON.stringify({ request: lastRequest, response: brain }, null, 2).slice(0, 100000);
+      if (request) { history.unshift({ stimulus, intensity: request.intensity, seed: request.seed, total: brain.total_spikes ?? "—" }); history = history.slice(0, 5); renderHistory(); }
+    }
+
+    function startResponseBehavior(stimulus, brain) {
+      const drive = brain.drive || {};
+      const escape = clamp(Number(drive.escape) || 0, 0, 1);
+      const walk = clamp(Number(drive.walk) || 0, 0, 1);
+      const proboscis = clamp(Number(drive.proboscis) || 0, 0, 1);
+      const wing = clamp(Number(drive.wing) || 0, 0, 1);
+      const turn = clamp(Number(drive.turn) || 0, 0, 1);
+      const started = performance.now() / 1000;
+      if (stimulus === "none") { behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; ui.status.textContent = `Estímulo none: controle sem estímulo externo.`; return; }
+      if (escape > .2) { behavior = { kind: "jump", started, duration: 1.35, strength: escape }; ui.status.textContent = `Estímulo ${stimulus}: a API devolveu escape=${(escape * 100).toFixed(0)}%. A animação de pulo representa esse comando.`; return; }
+      if (proboscis > .15) { behavior = { kind: "feed", started, duration: 2.2, strength: proboscis }; ui.status.textContent = `Estímulo ${stimulus}: a API devolveu proboscis=${(proboscis * 100).toFixed(0)}%. A animação representa esse comando.`; return; }
+      if (walk > .2) { behavior = { kind: "walk", started, duration: 3.2, strength: walk }; ui.status.textContent = `Estímulo ${stimulus}: a API devolveu walk=${(walk * 100).toFixed(0)}%. A animação representa esse comando.`; return; }
+      if (wing > .2) { behavior = { kind: "flap", started, duration: 1.8, strength: wing }; ui.status.textContent = `Estímulo ${stimulus}: a API devolveu wing=${(wing * 100).toFixed(0)}%. A animação representa esse comando.`; return; }
+      if (turn > .1) { behavior = { kind: "turn", started, duration: 1.6, strength: turn }; ui.status.textContent = `Estímulo ${stimulus}: a API devolveu turn=${(turn * 100).toFixed(0)}%. A animação representa esse comando.`; return; }
+      behavior = { kind: "idle", started: 0, duration: 0, strength: 0 };
+      ui.status.textContent = `Estímulo ${stimulus}: resposta recebida, mas nenhum comando de movimento ficou forte o suficiente para animar.`;
+    }
+
+    async function requestBrain(requestData, view = "drive") {
+      const response = await fetch(`${API_URL}/api/axobug/run?view=${view}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestData) });
+      const brain = await response.json();
+      if (!response.ok) throw new Error(brain.error || `HTTP ${response.status}`);
+      return brain;
+    }
+
+    async function runExperiment(stimulus) {
+      if (shadowRun.active) { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; }
+      showError(""); ui.food.disabled = true; ui.loom.disabled = true; setBackend("Consultando Axobug…", "loading");
+      const intensity = clamp(Number(ui.intensity.value) || 0, 0, 2); const seed = Math.max(0, Math.floor(Number(ui.seed.value) || 42));
+      const request = { stimulus, intensity, duration_ms: 100, seed };
+      try {
+        const brain = await requestBrain(request, "drive");
+        updateResponse(brain, request);
+        startResponseBehavior(stimulus, brain);
+        setBackend("Axobug conectado", "ok");
+      } catch (error) { showError(`Falha na API: ${error.message}`); setBackend("Erro na API"); }
+      finally { ui.food.disabled = false; ui.loom.disabled = false; }
+    }
+
+    async function fetchFullFrames() {
+      if (!lastRequest) { ui.framesInfo.textContent = "Faça primeiro uma experiência."; return; }
+      ui.frames.disabled = true; ui.framesInfo.textContent = "Buscando frames reais...";
+      try {
+        const brain = await requestBrain(lastRequest, "full");
+        const frames = Array.isArray(brain.frames) ? brain.frames : [];
+        const sampled = frames.reduce((sum, frame) => sum + (Array.isArray(frame.spikes) ? frame.spikes.length : 0), 0);
+        ui.framesInfo.textContent = `${frames.length} frames · ${sampled} spikes exibidos/amostrados · total real ${brain.total_spikes ?? "—"}.`;
+        ui.frameChart.replaceChildren();
+        const visibleFrames = frames.slice(0, 60); const maxFrame = Math.max(1, ...visibleFrames.map(frame => Array.isArray(frame.spikes) ? frame.spikes.length : 0));
+        visibleFrames.forEach(frame => { const bar = document.createElement("span"); bar.className = "frame-bar"; const count = Array.isArray(frame.spikes) ? frame.spikes.length : 0; bar.style.height = `${Math.max(3, count / maxFrame * 100)}%`; bar.title = `t=${frame.t ?? "?"} ms · ${count} spikes`; ui.frameChart.appendChild(bar); });
+        ui.raw.textContent = JSON.stringify({ request: lastRequest, response: brain }, null, 2).slice(0, 100000);
+      } catch (error) { ui.framesInfo.textContent = `Não foi possível buscar frames: ${error.message}`; }
+      finally { ui.frames.disabled = false; }
+    }
+
+    function updateShadowStats() {
+      ui.shadowScore.textContent = `${shadowRun.score}/5`; ui.shadowEscape.textContent = shadowRun.escape ? `${Math.round(shadowRun.escape * 100)}%` : "—"; ui.shadowCalls.textContent = String(shadowRun.calls);
+    }
+
+    function finishShadowRun(message, success = false) {
+      shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; ui.shadowRun.disabled = false; ui.shadowStatus.textContent = message; updateShadowStats();
+      if (success) { behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; }
+    }
+
+    async function startShadowRun() {
+      if (shadowRun.active) return;
+      shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: performance.now() / 1000, token: (shadowRun.token || 0) + 1 };
+      behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; ui.shadowRun.disabled = true; ui.shadowStatus.textContent = "Enviando food para medir o ritmo..."; updateShadowStats();
+      const requestData = { stimulus: "food", intensity: 1, duration_ms: 100, seed: Math.max(0, Math.floor(Number(ui.seed.value) || 42)) };
+      try {
+        const brain = await requestBrain(requestData, "drive"); shadowRun.calls += 1; updateResponse(brain, requestData);
+        shadowRun.pace = clamp(Number(brain.drive?.walk) || 0, 0, 1);
+        if (shadowRun.pace <= 0) { finishShadowRun("A API não devolveu walk; a corrida não começou."); return; }
+        shadowRun.active = true; shadowRun.last = performance.now() / 1000; shadowObstacle.visible = true; ui.shadowStatus.textContent = `Corrida iniciada: pace ${(shadowRun.pace * 100).toFixed(0)}%.`;
+      } catch (error) { ui.shadowRun.disabled = false; ui.shadowStatus.textContent = `Falha ao iniciar: ${error.message}`; }
+      updateShadowStats();
+    }
+
+    async function senseShadow(token) {
+      if (!shadowRun.active || shadowRun.sensed || token !== shadowRun.token) return;
+      shadowRun.sensed = true; shadowRun.waiting = true; ui.shadowStatus.textContent = "Sombra detectada. Consultando escape..."; const requestData = { stimulus: "loom", intensity: clamp(Number(ui.intensity.value) || 0, 0, 2), duration_ms: 100, seed: Math.max(0, Math.floor(Number(ui.seed.value) || 42)) };
+      try {
+        const brain = await requestBrain(requestData, "drive"); if (token !== shadowRun.token || !shadowRun.active) return;
+        shadowRun.calls += 1; shadowRun.escape = clamp(Number(brain.drive?.escape) || 0, 0, 1); shadowRun.waiting = false; updateResponse(brain, requestData); updateShadowStats(); ui.shadowStatus.textContent = `Resposta recebida: escape ${(shadowRun.escape * 100).toFixed(0)}%.`;
+      } catch (error) { if (token === shadowRun.token) finishShadowRun(`Falha na consulta da sombra: ${error.message}`); }
+    }
+
+    function updateShadowRun(now) {
+      if (!shadowRun.active) return;
+      const delta = Math.min(.05, Math.max(0, now - shadowRun.last)); shadowRun.last = now;
+      if (!shadowRun.waiting) shadowRun.phase += delta * (.12 + shadowRun.pace * .10);
+      const phase = shadowRun.phase; const flyX = -2.2 + phase * 3.5; const obstacleX = 3.2 - phase * 5.4;
+      if (shadowObstacle) { shadowObstacle.visible = true; shadowObstacle.position.x = obstacleX; }
+      const jumpPhase = clamp((phase - .38) / .5, 0, 1); const height = Math.sin(Math.PI * jumpPhase) * 1.8 * shadowRun.escape;
+      fly.position.x = flyX; fly.position.y = -1.1 + height; fly.rotation.y = -Math.PI / 2; fly.rotation.x = -Math.sin(Math.PI * jumpPhase) * .3; if (leftWing) leftWing.rotation.z = Math.sin(now * 34) * .55; if (rightWing) rightWing.rotation.z = -Math.sin(now * 34) * .55;
+      if (phase >= .30 && !shadowRun.sensed) void senseShadow(shadowRun.token);
+      if (phase >= .60 && phase <= .76 && height < .5) { finishShadowRun(`A sombra chegou primeiro. Escape insuficiente (${(shadowRun.escape * 100).toFixed(0)}%).`); return; }
+      if (phase >= 1) { shadowRun.score += 1; if (shadowRun.score >= 5) { finishShadowRun("Cinco sombras, cinco respostas de escape. Corrida concluída!", true); } else { shadowRun.phase = 0; shadowRun.sensed = false; shadowRun.escape = 0; ui.shadowStatus.textContent = `Sombra ${shadowRun.score} limpa. A próxima está chegando.`; updateShadowStats(); } }
+    }
+
+    ui.food.addEventListener("click", () => { ui.stimulus.value = "food"; runExperiment("food"); });
+    ui.loom.addEventListener("click", () => { ui.stimulus.value = "loom"; runExperiment("loom"); });
+    ui.run.addEventListener("click", () => runExperiment(ui.stimulus.value));
+    ui.shadowRun.addEventListener("click", startShadowRun);
+    ui.stimulus.addEventListener("change", () => { ui.status.textContent = `${ui.stimulus.value} selecionado. Clique em executar para consultar a Axobug.`; });
+    ui.frames.addEventListener("click", fetchFullFrames);
+    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; ui.status.textContent = "Animação limpa. Escolha um experimento."; });
+    function animate() { requestAnimationFrame(animate); const now = performance.now() / 1000; controls?.update(); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
+    initThree(); checkBackend(); animate();
+  </script>
+</body>
+</html>
