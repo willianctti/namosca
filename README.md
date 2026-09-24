@@ -388,6 +388,8 @@ Experimentos futuros deverão registrar também:
 - condições iniciais;
 - resultados comportamentais.
 
+O mapa 3D de neurônios e sinapses reais é a próxima etapa. O guia de preparação do download está em [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
+
 ---
 
 ## Roadmap
