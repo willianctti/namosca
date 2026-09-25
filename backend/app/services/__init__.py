@@ -1,1 +1,1 @@
-"""Application services for graph retrieval and simulation orchestration."""
+"""Serviços da aplicação para obter grafos e coordenar simulações."""

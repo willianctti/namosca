@@ -1,7 +1,7 @@
-"""Application configuration loaded from environment variables.
+"""Configurações da aplicação carregadas de variáveis de ambiente.
 
-Using a small dataclass instead of a settings library keeps the runtime
-lightweight and makes the deployment contract obvious.
+Usar um dataclass pequeno evita uma biblioteca de configurações e deixa o
+contrato de implantação mais claro.
 """
 
 from __future__ import annotations
@@ -9,16 +9,16 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-try:  # Optional at import time; uvicorn[standard] installs it in normal setups.
+try:  # Opcional na importação; uvicorn[standard] instala em instalações normais.
     from dotenv import load_dotenv
 
     load_dotenv()
-except ImportError:  # pragma: no cover - environment without python-dotenv
+except ImportError:  # pragma: no cover - ambiente sem python-dotenv
     pass
 
 
 def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
-    """Read a positive integer environment variable safely."""
+    """Lê com segurança uma variável de ambiente inteira e positiva."""
 
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -33,7 +33,7 @@ def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
 
 
 def _env_float(name: str, default: float, *, minimum: float = 0.0) -> float:
-    """Read a non-negative float environment variable safely."""
+    """Lê com segurança uma variável de ambiente decimal não negativa."""
 
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -48,7 +48,7 @@ def _env_float(name: str, default: float, *, minimum: float = 0.0) -> float:
 
 
 def _env_list(name: str, default: str) -> list[str]:
-    """Parse a comma-separated environment variable."""
+    """Separa uma variável de ambiente em itens por vírgula."""
 
     raw = os.getenv(name, default)
     return [item.strip() for item in raw.split(",") if item.strip()]
@@ -56,7 +56,7 @@ def _env_list(name: str, default: str) -> list[str]:
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """Runtime settings for the API and remote providers."""
+    """Configurações de execução da API e dos provedores remotos."""
 
     axobug_base_url: str = "https://axobug.com"
     axobug_api_token: str | None = None
@@ -80,7 +80,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        """Build settings from process environment variables."""
+        """Cria as configurações a partir das variáveis do ambiente."""
 
         flywire_url = os.getenv("FLYWIRE_GRAPH_URL", "").strip() or None
         flywire_file = os.getenv("FLYWIRE_DATA_FILE", "").strip() or None

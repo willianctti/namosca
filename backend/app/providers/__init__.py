@@ -1,4 +1,4 @@
-"""External data providers."""
+"""Provedores de dados externos."""
 
 from .axobug import AxobugClient, AxobugError
 from .flywire import FlyWireProvider

@@ -1,3 +1,5 @@
+"""Testes do simulador LIF e das rotas que dependem dele."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -8,11 +10,15 @@ from app.simulation import LIFSimulator, run_local
 
 
 def test_region_alias_is_supported() -> None:
+    """Confere o uso de apelidos de região."""
+
     assert GraphQuery(region="visual").region.value == "optic_lobes"
     assert GraphQuery(region="mushroom_body").region.value == "mushroom_body"
 
 
 def test_lif_propagates_a_delayed_synapse() -> None:
+    """Confere a propagação de uma sinapse com atraso."""
+
     graph = Network(
         region="visual",
         source="test-fixture",
@@ -35,6 +41,8 @@ def test_lif_propagates_a_delayed_synapse() -> None:
 
 @pytest.mark.asyncio
 async def test_inhibitory_ablation_releases_a_competing_excitatory_path() -> None:
+    """Confere a simulação sem a aresta inibitora escolhida."""
+
     graph = Network(
         region="visual",
         source="test-fixture",
@@ -64,6 +72,8 @@ async def test_inhibitory_ablation_releases_a_competing_excitatory_path() -> Non
 
 @pytest.mark.asyncio
 async def test_excitatory_edge_override_changes_only_the_selected_edge() -> None:
+    """Confere que a troca de aresta afeta somente o trecho escolhido."""
+
     graph = Network(
         region="visual",
         source="test-fixture",
@@ -87,6 +97,8 @@ async def test_excitatory_edge_override_changes_only_the_selected_edge() -> None
 
 
 def test_no_mock_graph_is_served_when_flywire_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Confere que um grafo simulado não é servido sem o FlyWire configurado."""
+
     from fastapi.testclient import TestClient
     from app.main import app
 

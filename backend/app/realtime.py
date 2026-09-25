@@ -1,4 +1,4 @@
-"""WebSocket session for low-latency spike streaming."""
+"""Sessão WebSocket para transmitir picos com baixa latência."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from app.simulation import LIFSimulator, StepResult, _frame_from_step
 
 
 class RealtimeSession:
-    """Own one lightweight simulator and stream its frames to one client."""
+    """Controla um simulador leve e transmite seus quadros a um cliente."""
 
     def __init__(
         self,
@@ -38,15 +38,15 @@ class RealtimeSession:
         self.loop = asyncio.get_running_loop()
 
     async def run(self) -> None:
-        """Send graph metadata, then stream until disconnect or stop command."""
+        """Envia os metadados do grafo e transmite quadros até desconectar ou receber uma parada."""
 
         await self.websocket.send_json(
             {
                 "type": "ready",
                 "network": self.network.model_dump(mode="json"),
                 "config": self.config.model_dump(mode="json"),
-                # Compatibility fields keep simple single-file clients from
-                # treating the initial metadata message as a spike frame.
+                # Os campos de compatibilidade impedem que clientes simples
+                # confundam os metadados iniciais com um quadro de picos.
                 "time": 0.0,
                 "spikes": [],
                 "neurons": [],
@@ -62,18 +62,20 @@ class RealtimeSession:
         for task in pending:
             task.cancel()
         for task in done:
-            # Consume task exceptions so a client disconnect does not produce
-            # an unhandled-task warning during shutdown.
+            # Consome os erros das tarefas para que uma desconexão do cliente
+            # não produza um aviso de tarefa não tratada durante o encerramento.
             try:
                 task.result()
             except asyncio.CancelledError:
                 pass
             except Exception:
-                # The WebSocket may already be closed; there is no safe second
-                # error channel at this point.
+                # O WebSocket pode já estar fechado; neste momento não há um
+                # segundo canal seguro para informar o erro.
                 pass
 
     async def _sender(self) -> None:
+        """Avança a simulação e envia quadros no ritmo configurado."""
+
         next_tick = self.loop.time()
         while not self.stop_event.is_set():
             frame_stride = max(1, int(round(self.config.frame_interval_ms / self.config.dt_ms)))
@@ -93,9 +95,9 @@ class RealtimeSession:
                 or (result.spikes.size and not self.legacy_payload)
             )
             if should_send:
-                # A frame is sent on the configured cadence. Including a frame
-                # whenever a spike occurs keeps short pulses visible even if a
-                # client chooses a long frame interval.
+                # Envia um quadro no ritmo configurado. Incluir um quadro
+                # sempre que houver um pico mantém pulsos curtos visíveis,
+                # mesmo quando o cliente escolhe um intervalo longo.
                 frame = _frame_from_step(
                     self.simulator,
                     result,
@@ -108,8 +110,8 @@ class RealtimeSession:
                 ]
                 for neuron_id in spike_ids:
                     self._recent_activity_ms[neuron_id] = result.t_ms
-                # Bound the compatibility activity cache independently of the
-                # full graph size.
+                # Limita o cache de atividade de compatibilidade independentemente
+                # do tamanho completo do grafo.
                 cutoff = result.t_ms - 250.0
                 self._recent_activity_ms = {
                     neuron_id: timestamp
@@ -130,12 +132,12 @@ class RealtimeSession:
                     )
                 await self.websocket.send_json(payload)
             next_tick += self.config.dt_ms / 1000.0
-            # Recover gracefully if the event loop was paused by a slow client.
+            # Recupera o ritmo se um cliente lento pausar o loop de eventos.
             if next_tick < now - self.config.dt_ms / 1000.0:
                 next_tick = now
 
     def _legacy_neurons(self, result: StepResult) -> list[dict[str, Any]]:
-        """Build the state shape consumed by the original demo frontend."""
+        """Monta o formato de estado usado pela interface da demonstração original."""
 
         spike_ids = {self.simulator.neuron_ids[int(index)] for index in result.spikes}
         visible = {
@@ -162,7 +164,7 @@ class RealtimeSession:
         return payload
 
     def inject(self, stimulus: Stimulus) -> int:
-        """Apply a pulse to this live session and return target count."""
+        """Aplica um pulso nesta sessão e devolve a quantidade de alvos."""
 
         vector = self.simulator.stimulus_vector(stimulus, region=self.network.region)
         self.pulse_input = vector
@@ -170,7 +172,7 @@ class RealtimeSession:
         return int(np.count_nonzero(vector))
 
     async def _receiver(self) -> None:
-        """Handle small JSON control messages without blocking the sender."""
+        """Processa pequenas mensagens JSON de controle sem bloquear o envio."""
 
         while True:
             message = await self.websocket.receive_json()
@@ -178,8 +180,8 @@ class RealtimeSession:
                 await self._send_error("control message must be a JSON object")
                 continue
             message_type = str(message.get("type", "")).lower()
-            # Accept the prototype's {"action": "inject", ...} commands in
-            # addition to the versioned {"type": "pulse", ...} protocol.
+            # Aceita os comandos {"action": "inject", ...} do protótipo,
+            # além do protocolo versionado {"type": "pulse", ...}.
             if not message_type:
                 action = str(message.get("action", "")).lower()
                 message_type = {
@@ -258,13 +260,15 @@ class RealtimeSession:
                 await self._send_error(f"unknown message type: {message_type or '<empty>'}")
 
     async def _start(self, raw_config: Any) -> None:
+        """Reinicia a sessão com uma configuração validada."""
+
         if raw_config is not None and not isinstance(raw_config, dict):
             await self._send_error("config must be an object")
             return
         try:
             config = SimulationConfig.model_validate(raw_config or {})
-            # Recreate only the small state object; the network is shared by
-            # reference and is not downloaded again.
+            # Recria apenas o pequeno objeto de estado; a rede é compartilhada
+            # por referência e não é baixada novamente.
             self.config = config
             self.simulator = LIFSimulator(self.network, config)
             self.zero_input = np.zeros(self.simulator.neuron_count, dtype=np.float32)
@@ -276,9 +280,11 @@ class RealtimeSession:
         await self.websocket.send_json({"type": "started", "config": config.model_dump(mode="json")})
 
     async def _send_error(self, message: str) -> None:
+        """Tenta informar um erro sem interromper a limpeza da sessão."""
+
         try:
             await self.websocket.send_json({"type": "error", "message": message})
         except Exception:
-            # The client may have disconnected between the simulation and the
-            # error send; the outer task cleanup handles the stream.
+            # O cliente pode ter desconectado entre a simulação e o envio
+            # do erro; a limpeza externa da tarefa cuida do fluxo.
             return

@@ -1,4 +1,4 @@
-"""Pydantic contracts shared by HTTP, WebSocket and provider adapters."""
+"""Contratos Pydantic compartilhados pela API HTTP, WebSocket e provedores."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Region(str, Enum):
-    """Supported subnetwork presets."""
+    """Sub-redes disponíveis."""
 
     OPTIC_LOBES = "optic_lobes"
     DESCENDING = "descending"
@@ -41,10 +41,10 @@ _REGION_ALIASES: dict[str, Region] = {
 
 
 def normalize_region(value: str | Region | None) -> Region:
-    """Normalize English/Portuguese region aliases.
+    """Normaliza os apelidos de região em português ou inglês.
 
-    Unknown values are rejected instead of silently selecting a different
-    biological dataset, which is important for reproducibility.
+    Valores desconhecidos são rejeitados em vez de escolher outro conjunto
+    biológico sem avisar; isso ajuda a manter os resultados reproduzíveis.
     """
 
     if isinstance(value, Region):
@@ -61,13 +61,13 @@ def normalize_region(value: str | Region | None) -> Region:
 
 
 class StrictModel(BaseModel):
-    """Base model that ignores unknown provider fields safely."""
+    """Modelo base que ignora campos desconhecidos do provedor sem falhar."""
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
 class Neuron(StrictModel):
-    """A point-like neuron representation suitable for Three.js."""
+    """Representação de um neurônio como ponto, adequada para Three.js."""
 
     id: str
     label: str
@@ -84,7 +84,7 @@ class Neuron(StrictModel):
 
 
 class Synapse(StrictModel):
-    """Directed chemical synapse between two neuron IDs."""
+    """Sinapse química dirigida entre dois identificadores de neurônio."""
 
     source: str
     target: str
@@ -97,7 +97,7 @@ class Synapse(StrictModel):
 
 
 class GraphQuery(StrictModel):
-    """Limits and provider selection for a graph request."""
+    """Limites e escolha do provedor para uma solicitação de grafo."""
 
     region: Region = Region.OPTIC_LOBES
     source: Literal["auto", "flywire"] = "auto"
@@ -108,14 +108,16 @@ class GraphQuery(StrictModel):
     @field_validator("region", mode="before")
     @classmethod
     def validate_region(cls, value: str | Region) -> Region:
+        """Normaliza a região recebida antes de validar o modelo."""
+
         return normalize_region(value)
 
 
 class Network(StrictModel):
-    """Normalized graph schema returned to clients.
+    """Esquema normalizado de grafo devolvido aos clientes.
 
-    The same shape is emitted by configured local and remote adapters. This
-    prevents the frontend from depending on provider quirks.
+    Os adaptadores local e remoto configurados usam o mesmo formato. Assim, a
+    interface não depende de peculiaridades de cada provedor.
     """
 
     schema_version: Literal["1.0"] = "1.0"
@@ -132,7 +134,7 @@ class Network(StrictModel):
 
 
 class NetworkSummary(StrictModel):
-    """Small network descriptor used in simulation responses."""
+    """Descrição pequena da rede usada nas respostas de simulação."""
 
     region: str
     source: str
@@ -144,7 +146,7 @@ class NetworkSummary(StrictModel):
 
 
 class Stimulus(StrictModel):
-    """External current pulse injected into selected neurons."""
+    """Pulso de corrente externo aplicado aos neurônios selecionados."""
 
     neuron_ids: list[str] = Field(default_factory=list, max_length=256)
     intensity: float = Field(default=1.5, ge=0.0, le=50.0)
@@ -153,7 +155,7 @@ class Stimulus(StrictModel):
 
 
 class SimulationConfig(StrictModel):
-    """Numerical parameters for the leaky integrate-and-fire model."""
+    """Parâmetros numéricos do modelo de integração e vazamento (LIF)."""
 
     dt_ms: float = Field(default=5.0, ge=1.0, le=100.0)
     duration_ms: float = Field(default=500.0, gt=0.0, le=30_000.0)
@@ -168,14 +170,15 @@ class SimulationConfig(StrictModel):
     @field_validator("duration_ms")
     @classmethod
     def validate_duration(cls, value: float) -> float:
-        # Avoid an accidental million-step request from a malformed client.
+        """Impede que uma solicitação malformada peça milhões de passos."""
+
         if value > 30_000:
             raise ValueError("duration_ms must be <= 30000")
         return value
 
 
 class ExcitatoryEdgeOverride(StrictModel):
-    """Counterfactual edge sign override for an exploratory LIF run."""
+    """Substitui o sinal de uma aresta para um experimento LIF exploratório."""
 
     source: str
     target: str
@@ -183,7 +186,7 @@ class ExcitatoryEdgeOverride(StrictModel):
 
 
 class SimulationRequest(StrictModel):
-    """HTTP simulation request."""
+    """Solicitação de simulação pela API HTTP."""
 
     graph: GraphQuery = Field(default_factory=GraphQuery)
     config: SimulationConfig = Field(default_factory=SimulationConfig)
@@ -195,7 +198,7 @@ class SimulationRequest(StrictModel):
 
 
 class SpikeFrame(StrictModel):
-    """One display frame emitted by the simulator."""
+    """Um quadro de exibição enviado pelo simulador."""
 
     t_ms: float
     spikes: list[str]
@@ -207,7 +210,7 @@ class SpikeFrame(StrictModel):
 
 
 class SimulationStats(StrictModel):
-    """Summary counters for a completed run."""
+    """Contadores resumidos de uma simulação concluída."""
 
     steps: int
     total_spikes: int
@@ -218,7 +221,7 @@ class SimulationStats(StrictModel):
 
 
 class SimulationResult(StrictModel):
-    """HTTP result for a completed LIF or Axobug-backed run."""
+    """Resultado HTTP de uma execução LIF ou apoiada pelo Axobug."""
 
     engine_requested: Literal["lif", "axobug"]
     engine_used: Literal["lif", "axobug"]
@@ -231,7 +234,7 @@ class SimulationResult(StrictModel):
 
 
 class AxobugRunRequest(StrictModel):
-    """Small proxy request for the public Axobug Neuro API."""
+    """Pequena solicitação para a API pública Axobug Neuro."""
 
     stimulus: str = "loom"
     intensity: float = Field(default=1.0, ge=0.0, le=2.0)
@@ -242,12 +245,16 @@ class AxobugRunRequest(StrictModel):
     @field_validator("duration_ms")
     @classmethod
     def validate_axobug_duration(cls, value: int) -> int:
+        """Aceita somente as durações permitidas pelo Axobug."""
+
         if value not in {50, 100, 150, 200}:
             raise ValueError("Axobug duration_ms must be one of 50, 100, 150, 200")
         return value
 
 
 class HealthResponse(StrictModel):
+    """Resposta usada pela rota de saúde da API."""
+
     status: Literal["ok"]
     service: str
     version: str

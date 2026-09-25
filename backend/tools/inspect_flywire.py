@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Inspect a large FlyWire/Codex export without loading it into memory.
+"""Inspeciona uma exportação grande do FlyWire/Codex sem carregá-la na memória.
 
-Examples
+Exemplos
 --------
 python tools/inspect_flywire.py data/flywire/sk_lod1_783_healed.zip
 python tools/inspect_flywire.py data/flywire/connections.csv.gz
@@ -24,17 +24,21 @@ from typing import TextIO
 
 
 def open_text(path: Path) -> TextIO:
+    """Abre um arquivo de texto normal ou compactado com gzip."""
+
     if path.suffix.lower() == ".gz":
         return gzip.open(path, "rt", encoding="utf-8", newline="")
     return path.open("r", encoding="utf-8", newline="")
 
 
 def inspect_csv(path: Path, samples: int, delimiter: str | None) -> dict[str, object]:
+    """Lê apenas algumas linhas de um CSV ou TSV."""
+
     with open_text(path) as stream:
         if delimiter is None:
             delimiter = "\t" if path.suffix.lower() in {".tsv", ".tab"} else ","
         reader = csv.reader(stream, delimiter=delimiter)
-        # Read only a few rows; the full file may contain billions of cells.
+        # Lê apenas algumas linhas; o arquivo inteiro pode ter bilhões de células.
         rows = []
         try:
             header = next(reader)
@@ -55,6 +59,8 @@ def inspect_csv(path: Path, samples: int, delimiter: str | None) -> dict[str, ob
 
 
 def inspect_json_lines(path: Path, samples: int) -> dict[str, object]:
+    """Lê algumas linhas de um arquivo JSONL."""
+
     rows: list[object] = []
     with open_text(path) as stream:
         for _ in range(max(0, samples)):
@@ -75,7 +81,7 @@ def inspect_json_lines(path: Path, samples: int) -> dict[str, object]:
 
 
 def inspect_zip(path: Path, samples: int) -> dict[str, object]:
-    """Inspect a ZIP central directory and read only a few SWC members."""
+    """Inspeciona o diretório central de um ZIP e lê poucos arquivos SWC."""
 
     try:
         with zipfile.ZipFile(path) as archive:
@@ -119,6 +125,8 @@ def inspect_zip(path: Path, samples: int) -> dict[str, object]:
 
 
 def main() -> int:
+    """Inspeciona o arquivo escolhido pela linha de comando."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "path",

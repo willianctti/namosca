@@ -1,7 +1,7 @@
-"""Compatibility entrypoint: ``python main.py``.
+"""Ponto de entrada compatível: ``python main.py``.
 
-The application itself lives in the modular ``app`` package. Keeping this tiny
-launcher makes the command used by the original FlyBrainWeb examples work.
+A aplicação está no pacote modular ``app``. Este iniciador pequeno mantém
+funcionando o comando usado pelos exemplos antigos do FlyBrainWeb.
 """
 
 from __future__ import annotations

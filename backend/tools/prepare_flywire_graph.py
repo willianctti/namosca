@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Build a bounded, normalized FlyWire graph from FAFB static exports.
+"""Monta um grafo FlyWire normalizado e limitado a partir de exportações estáticas FAFB.
 
-The importer streams the compressed CSV files and reads only selected SWC
-members from the skeleton ZIP. It never extracts the complete 13 GB archive
-or loads the full connection table into memory.
+O importador lê os arquivos CSV compactados em fluxo e seleciona apenas
+arquivos SWC do ZIP de esqueletos. Nunca extrai o arquivo completo de 13 GB
+nem carrega toda a tabela de conexões na memória.
 
-Example
+Exemplo
 -------
 python tools/prepare_flywire_graph.py \
   --skeletons /data/flywire/sk_lod1_783_healed.zip \
@@ -36,7 +36,7 @@ Edge = tuple[int, str, str, str, str]
 
 
 def open_csv(path: Path) -> TextIO:
-    """Open a plain or gzip-compressed CSV as text."""
+    """Abre um CSV normal ou compactado com gzip como texto."""
 
     if path.suffix.lower() == ".gz":
         return gzip.open(path, "rt", encoding="utf-8", newline="")
@@ -44,13 +44,15 @@ def open_csv(path: Path) -> TextIO:
 
 
 def rows(path: Path) -> Iterator[dict[str, str]]:
-    """Yield rows from a CSV without materializing the file."""
+    """Entrega linhas de um CSV sem materializar o arquivo inteiro."""
 
     with open_csv(path) as stream:
         yield from csv.DictReader(stream)
 
 
 def first(row: dict[str, str], *keys: str) -> str:
+    """Devolve o primeiro campo preenchido entre os nomes informados."""
+
     for key in keys:
         value = row.get(key)
         if value is not None and str(value).strip():
@@ -59,6 +61,8 @@ def first(row: dict[str, str], *keys: str) -> str:
 
 
 def matches_group(value: str, patterns: list[str]) -> bool:
+    """Indica se o grupo pertence aos padrões solicitados."""
+
     if not patterns:
         return True
     normalized = value.lower().replace("-", "_")
@@ -71,6 +75,8 @@ def matches_group(value: str, patterns: list[str]) -> bool:
 
 
 def matches_neuropil(value: str, patterns: list[str]) -> bool:
+    """Indica se o neuropilo pertence aos padrões solicitados."""
+
     if not patterns:
         return True
     normalized = value.lower().replace("-", "_")
@@ -83,7 +89,7 @@ def matches_neuropil(value: str, patterns: list[str]) -> bool:
 
 
 def load_neurons(path: Path, groups: list[str]) -> tuple[dict[str, dict[str, str]], int]:
-    """Load only the small metadata table, optionally filtered by group."""
+    """Carrega só a tabela pequena de metadados, com filtro opcional por grupo."""
 
     metadata: dict[str, dict[str, str]] = {}
     total = 0
@@ -100,6 +106,8 @@ def load_neurons(path: Path, groups: list[str]) -> tuple[dict[str, dict[str, str
 
 
 def load_cell_types(path: Path | None) -> dict[str, tuple[str, str]]:
+    """Carrega os tipos celular principal e adicional de cada neurônio."""
+
     if path is None:
         return {}
     result: dict[str, tuple[str, str]] = {}
@@ -120,7 +128,7 @@ def iter_edges(
     neuropils: list[str],
     min_synapses: int,
 ) -> Iterator[Edge]:
-    """Yield filtered directed edges as (count, pre, post, neuropil, nt)."""
+    """Entrega arestas dirigidas filtradas como (contagem, origem, destino, neuropilo, neurotransmissor)."""
 
     for row in rows(path):
         pre = first(row, "pre_root_id", "pre", "source", "from")
@@ -140,6 +148,8 @@ def iter_edges(
 
 
 def id_sort_key(value: str) -> tuple[int, int | str]:
+    """Cria uma chave que ordena IDs numéricos antes dos textuais."""
+
     try:
         return 0, int(value)
     except ValueError:
@@ -149,7 +159,7 @@ def id_sort_key(value: str) -> tuple[int, int | str]:
 def read_swc_positions(
     archive_path: Path, selected: list[str]
 ) -> tuple[dict[str, tuple[float, float, float]], int]:
-    """Read soma/first-point coordinates for selected IDs directly from ZIP."""
+    """Lê diretamente do ZIP as coordenadas do soma ou do primeiro ponto dos IDs escolhidos."""
 
     positions: dict[str, tuple[float, float, float]] = {}
     missing = 0
@@ -200,7 +210,7 @@ def choose_edges(
     min_synapses: int,
     max_synapses: int,
 ) -> tuple[list[Edge], int]:
-    """Keep the strongest bounded set of edges without storing all matches."""
+    """Mantém o conjunto limitado de arestas mais fortes sem guardar todas."""
 
     heap: list[Edge] = []
     candidates = 0
@@ -214,6 +224,8 @@ def choose_edges(
 
 
 def build_graph(args: argparse.Namespace) -> dict[str, object]:
+    """Seleciona os neurônios e as arestas e monta o grafo normalizado."""
+
     neuron_meta, neuron_rows = load_neurons(args.neurons, args.group)
     if not neuron_meta:
         raise ValueError("no neurons remained after the group filter")
@@ -337,6 +349,8 @@ def build_graph(args: argparse.Namespace) -> dict[str, object]:
 
 
 def main() -> int:
+    """Executa a criação do grafo pela linha de comando."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skeletons", type=Path, required=True)
     parser.add_argument("--neurons", type=Path, required=True)

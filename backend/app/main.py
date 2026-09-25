@@ -1,4 +1,4 @@
-"""FastAPI application exposing graph, simulation and realtime endpoints."""
+"""Aplicação FastAPI com rotas de grafo, simulação e tempo real."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from app.services.simulation import SimulationService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create one shared HTTP client and bounded service graph per process."""
+    """Cria um cliente HTTP compartilhado e serviços limitados por processo."""
 
     settings = Settings.from_env()
     headers = {
@@ -69,8 +69,8 @@ async def lifespan(app: FastAPI):
     app.state.simulations = SimulationService(axobug)
     project_root = Path(__file__).resolve().parents[2]
     app.state.dm_routes = load_dm_routes(project_root / "data" / "flywire" / "dm_dn_mn_routes.json")
-    # One optional compatibility runtime for the original single-file demo
-    # endpoints. The primary WebSocket still creates isolated sessions.
+    # Mantém um estado de execução opcional de compatibilidade para as rotas do protótipo
+    # antigo. O WebSocket principal continua criando sessões isoladas.
     app.state.legacy_runtime = None
     app.state.legacy_region = None
     app.state.legacy_source = None
@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    """Application factory, useful for tests and alternative ASGI servers."""
+    """Fábrica da aplicação, útil para testes e servidores ASGI alternativos."""
 
     app = FastAPI(
         title="Drosophila Neuro Simulator",
@@ -93,8 +93,8 @@ def create_app() -> FastAPI:
         ),
         lifespan=lifespan,
     )
-    # Settings are needed while constructing middleware. Environment parsing is
-    # cheap and keeps the factory independent from the lifespan state.
+    # As configurações são necessárias ao montar o middleware. Ler o ambiente é
+    # rápido e mantém a fábrica independente do estado do ciclo de vida.
     settings = Settings.from_env()
     allow_credentials = "*" not in settings.cors_origins
     app.add_middleware(
@@ -130,9 +130,8 @@ def create_app() -> FastAPI:
         service: NetworkService = request.app.state.networks
         return service.cache_info()
 
-    # Backward-compatible aliases for the prototype API. They intentionally
-    # delegate to the same bounded provider service instead of duplicating
-    # network-fetching logic.
+    # Mantém apelidos compatíveis com a API do protótipo. Eles usam o mesmo
+    # serviço limitado do provedor, em vez de duplicar a lógica de rede.
     @app.get("/health", tags=["compatibility"])
     async def legacy_health() -> dict[str, str]:
         return {"status": "ok", "service": "drosophila-neuro-sim", "version": __version__}
@@ -177,7 +176,9 @@ def create_app() -> FastAPI:
         region: str = Query("optic_lobe"),
         source: str = Query("auto"),
     ) -> dict[str, Any]:
-        # Also accept {"neuron_id": ..., "current": ...} for JSON clients.
+        """Aceita a injeção de um estímulo nos formatos antigo e JSON."""
+
+        # Também aceita {"neuron_id": ..., "current": ...} para clientes JSON.
         if neuron_id is None:
             try:
                 body = await request.json()
@@ -197,8 +198,8 @@ def create_app() -> FastAPI:
         runtime = await _get_legacy_runtime(request, region, source)
         if not runtime.inject(neuron_id, current):
             raise HTTPException(status_code=404, detail=f"neuron '{neuron_id}' not found")
-        # Preserve the behavior documented by the original prototype: an HTTP
-        # injection also reaches already-connected visualization sessions.
+        # Mantém o comportamento do protótipo original: uma injeção HTTP também
+        # chega às sessões de visualização já conectadas.
         pulse = Stimulus(neuron_ids=[neuron_id], intensity=current, duration_ms=100.0)
         for session in tuple(request.app.state.realtime_sessions):
             if session.network.region == runtime.network.region:
@@ -282,7 +283,7 @@ def create_app() -> FastAPI:
         try:
             return {"available": True, "model": await client.model_info()}
         except AxobugError as exc:
-            # Capability probing should be non-fatal for local development.
+            # A verificação de capacidades não deve interromper o desenvolvimento local.
             return {"available": False, "error": str(exc), "fallback": None}
 
     @app.post("/api/axobug/run", tags=["axobug"])
@@ -291,6 +292,8 @@ def create_app() -> FastAPI:
         payload: AxobugRunRequest,
         view: Literal["full", "drive"] | None = Query(None),
     ) -> dict[str, Any]:
+        """Executa uma simulação pelo serviço remoto Axobug."""
+
         client: AxobugClient = request.app.state.axobug
         selected_view = view or payload.view
         try:
@@ -306,6 +309,8 @@ def create_app() -> FastAPI:
 
     @app.post("/api/simulate", tags=["simulation"])
     async def simulate(request: Request, payload: SimulationRequest) -> dict[str, Any]:
+        """Executa a simulação e acrescenta o resumo dos sinais motores."""
+
         network = await _network_for_request(request, payload.graph)
         service: SimulationService = request.app.state.simulations
         result = await service.run(network, payload)
@@ -325,6 +330,8 @@ def create_app() -> FastAPI:
         dt_ms: float = Query(5.0, ge=1.0, le=100.0),
         frame_interval_ms: float = Query(16.0, gt=0.0, le=1000.0),
     ) -> None:
+        """Atende uma sessão WebSocket e transmite os quadros simulados."""
+
         await websocket.accept()
         try:
             query = _graph_query(region, source, max_neurons, max_synapses, False)
@@ -357,6 +364,8 @@ def create_app() -> FastAPI:
 
 
 async def _network_for_request(request: Request | WebSocket, query: GraphQuery) -> Network:
+    """Obtém o grafo solicitado pela rota ou pela sessão."""
+
     service: NetworkService = request.app.state.networks
     try:
         return await service.get_network(query)
@@ -365,7 +374,7 @@ async def _network_for_request(request: Request | WebSocket, query: GraphQuery) 
 
 
 async def _get_legacy_runtime(request: Request, region: str, source: str) -> LegacyRuntime:
-    """Return the one compatibility runtime, rebuilding it when region changes."""
+    """Devolve o único estado de compatibilidade e o reconstrói quando a região muda."""
 
     try:
         normalized = normalize_region(region)
@@ -390,7 +399,7 @@ async def _get_legacy_runtime(request: Request, region: str, source: str) -> Leg
 
 
 def _graph_query(region: str, source: str, max_neurons: int, max_synapses: int, strict: bool) -> GraphQuery:
-    """Convert query-string values into a validated schema object."""
+    """Converte parâmetros da URL em um objeto de esquema validado."""
 
     try:
         return GraphQuery(

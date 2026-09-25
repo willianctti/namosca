@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize MCNS/MANC descending output by body system and cell type."""
+"""Resume a saída descendente MCNS/MANC por sistema corporal e tipo celular."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from pathlib import Path
 
 
 def build_summary(routes_path: Path) -> dict:
+    """Agrupa as rotas por tipo do neurônio descendente e soma as conexões."""
+
     source = json.loads(routes_path.read_text(encoding="utf-8"))
     by_type = defaultdict(lambda: {
         "flywire_type": None,
@@ -78,6 +80,8 @@ def build_summary(routes_path: Path) -> dict:
 
 
 def main() -> int:
+    """Executa o resumo pela linha de comando."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--routes", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

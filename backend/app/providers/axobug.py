@@ -1,11 +1,12 @@
-"""Client for the public Axobug Neuro API.
+"""Cliente da API pública Axobug Neuro.
 
-The public Axobug alpha exposes simulation responses (``/api/v1/run``), not a
-raw neuron/connectome export. Consequently this client is used as an optional
-simulation engine; the local normalized graph remains the graph source unless
-a separate FlyWire-compatible JSON endpoint is configured.
+A versão alpha pública do Axobug oferece respostas de simulação
+(``/api/v1/run``), mas não uma exportação bruta de neurônios e conexões.
+Por isso, este cliente é um motor de simulação opcional; o grafo normalizado
+local continua sendo a fonte, a menos que outra rota JSON compatível com
+FlyWire seja configurado.
 
-Reference: https://docs.axobug.com/api-reference
+Referência: https://docs.axobug.com/api-reference
 """
 
 from __future__ import annotations
@@ -18,11 +19,11 @@ from app.providers.base import ProviderError
 
 
 class AxobugError(ProviderError):
-    """Raised when the remote Axobug API is unavailable or invalid."""
+    """Erro levantado quando a API remota do Axobug está indisponível ou inválida."""
 
 
 class AxobugClient:
-    """Small, cancellable HTTP adapter for Axobug's documented endpoints."""
+    """Adaptador HTTP pequeno e cancelável para as rotas documentadas do Axobug."""
 
     def __init__(
         self,
@@ -44,7 +45,7 @@ class AxobugClient:
         return headers
 
     async def model_info(self) -> dict[str, Any]:
-        """Return model metadata used for capability reporting."""
+        """Devolve os metadados do modelo usados para informar as capacidades."""
 
         url = f"{self.base_url}/api/v1/model"
         try:
@@ -74,10 +75,10 @@ class AxobugClient:
         seed: int,
         view: str = "full",
     ) -> dict[str, Any]:
-        """Run one isolated Axobug experiment.
+        """Executa um experimento isolado no Axobug.
 
-        Axobug currently accepts durations 50, 100, 150, or 200 ms. The caller
-        is responsible for normalizing the value before calling this method.
+        O Axobug aceita atualmente durações de 50, 100, 150 ou 200 ms. Quem chama
+        este método deve normalizar o valor antes.
         """
 
         url = f"{self.base_url}/api/v1/run"
@@ -112,7 +113,7 @@ class AxobugClient:
 
     @staticmethod
     def _error_detail(response: httpx.Response) -> str:
-        """Extract a short error message without returning a huge body."""
+        """Extrai uma mensagem curta de erro sem devolver um corpo enorme."""
 
         try:
             payload = response.json()

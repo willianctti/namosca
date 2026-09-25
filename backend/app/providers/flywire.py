@@ -1,15 +1,14 @@
-"""Optional adapter for FlyWire/Codex-compatible JSON graph exports.
+"""Adaptador opcional para exportações JSON de grafos FlyWire/Codex.
 
-FlyWire Codex is a signed-in web application and does not promise one stable,
-anonymous REST endpoint for raw connectome data. This adapter therefore
-supports an explicitly configured JSON export or REST proxy rather than
-inventing private Codex routes. The accepted input is deliberately permissive:
-common ``neurons``/``cells`` and ``synapses``/``connections`` field names are
-normalized into the backend schema.
+O Codex do FlyWire é um aplicativo da web e não promete uma rota REST
+anônimo e estável para dados brutos. Por isso, este adaptador aceita uma
+exportação JSON configurada ou um proxy REST, sem inventar rotas privadas.
+A entrada é flexível: nomes comuns de campos, como ``neurons``/``cells`` e
+``synapses``/``connections``, são normalizados para o esquema do backend.
 
-No credentials are required for a local JSON export. If a FlyWire endpoint is
-configured, use a short-lived token through ``FLYWIRE_API_TOKEN`` and never
-commit it to source control.
+Não é preciso ter credenciais para uma exportação JSON local. Se uma rota
+do FlyWire for configurada, use um token de curta duração em
+``FLYWIRE_API_TOKEN`` e nunca o versione no código-fonte.
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ from app.schemas import Network, Neuron, Region, Synapse
 
 
 class FlyWireProvider:
-    """Fetch a bounded graph from a user-configured JSON source."""
+    """Obtém um grafo limitado de uma fonte JSON configurada pelo usuário."""
 
     name = "flywire"
 
@@ -49,7 +48,7 @@ class FlyWireProvider:
 
     @property
     def configured(self) -> bool:
-        """Whether at least one external graph source is configured."""
+        """Indica se pelo menos uma fonte externa de grafo está configurada."""
 
         return bool(self.graph_url or self.data_file)
 
@@ -60,7 +59,7 @@ class FlyWireProvider:
         max_neurons: int,
         max_synapses: int,
     ) -> Network:
-        """Fetch and normalize a graph, enforcing hard memory limits."""
+        """Obtém e normaliza um grafo, respeitando limites rígidos de memória."""
 
         payload = await self._load_payload()
         neurons = self._parse_neurons(payload, region, max_neurons)
@@ -99,6 +98,8 @@ class FlyWireProvider:
         return limit_graph(graph, max_neurons=max_neurons, max_synapses=max_synapses)
 
     async def _load_payload(self) -> Any:
+        """Carrega o JSON do arquivo local ou da fonte remota."""
+
         if self.data_file:
             return self._read_file(Path(self.data_file))
         if not self.graph_url:
@@ -107,8 +108,8 @@ class FlyWireProvider:
         if self.api_token:
             headers["Authorization"] = f"Bearer {self.api_token}"
         try:
-            # Stream the response so a surprisingly large export cannot
-            # silently consume the whole process memory.
+            # Faz a leitura em fluxo para que uma exportação inesperadamente grande
+            # não consuma silenciosamente toda a memória do processo.
             async with self._client.stream(
                 "GET",
                 self.graph_url,
@@ -135,6 +136,8 @@ class FlyWireProvider:
             raise ProviderError("FlyWire response is not valid UTF-8 JSON") from exc
 
     def _read_file(self, path: Path) -> Any:
+        """Lê e decodifica um arquivo JSON local dentro do limite permitido."""
+
         try:
             size = path.stat().st_size
             if size > self.max_remote_bytes:
@@ -152,6 +155,8 @@ class FlyWireProvider:
         requested_region: Region,
         max_neurons: int,
     ) -> list[Neuron]:
+        """Converte registros de neurônios no formato do backend."""
+
         records = _records(_first_value(payload, "neurons", "cells", "neuron_data"))
         parsed: list[Neuron] = []
         for record in records:
@@ -213,6 +218,8 @@ class FlyWireProvider:
         neurons: dict[str, Neuron],
         max_synapses: int,
     ) -> list[Synapse]:
+        """Converte conexões em sinapses normalizadas e sem auto-conexões."""
+
         records = _records(
             _first_value(payload, "synapses", "connections", "edges", "connectome")
         )
@@ -277,7 +284,7 @@ class FlyWireProvider:
 
 
 def _first_value(data: Any, *keys: str) -> Any:
-    """Return the first present key, supporting one nested ``data`` object."""
+    """Devolve a primeira chave presente e aceita um objeto ``data`` aninhado."""
 
     if not isinstance(data, dict):
         return None
@@ -291,12 +298,12 @@ def _first_value(data: Any, *keys: str) -> Any:
 
 
 def _records(value: Any) -> Iterable[Any]:
-    """Normalize list and ID-to-object JSON containers into records."""
+    """Normaliza listas e contêineres JSON de IDs em registros."""
 
     if isinstance(value, list):
         return value
     if isinstance(value, dict):
-        # Some exports use {"12345": {"x": ...}} rather than a list.
+        # Algumas exportações usam {"12345": {"x": ...}} em vez de uma lista.
         if any(key in value for key in ("id", "neuron_id", "cell_id", "x", "position")):
             return [value]
         if all(isinstance(item, dict) for item in value.values()):
@@ -306,7 +313,7 @@ def _records(value: Any) -> Iterable[Any]:
 
 
 def _position(record: dict[str, Any]) -> tuple[float, float, float] | None:
-    """Read common position representations from a neuron record."""
+    """Lê as formas comuns de posição em um registro de neurônio."""
 
     for key in ("position", "xyz", "coordinates", "coord", "soma_position"):
         value = record.get(key)
@@ -327,6 +334,8 @@ def _position(record: dict[str, Any]) -> tuple[float, float, float] | None:
 
 
 def _endpoint(record: dict[str, Any], *keys: str) -> Any:
+    """Obtém o identificador de uma extremidade de conexão."""
+
     value = _first_value(record, *keys)
     if isinstance(value, dict):
         return _first_value(value, "id", "value", "name")
@@ -334,6 +343,8 @@ def _endpoint(record: dict[str, Any], *keys: str) -> Any:
 
 
 def _matches_region(value: str, requested: Region) -> bool:
+    """Indica se o texto pertence à região solicitada."""
+
     normalized = value.lower().replace("-", "_").replace(" ", "_")
     if requested is Region.OPTIC_LOBES:
         return any(token in normalized for token in ("optic", "visual", "lobula", "medulla", "lamina"))

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build a cross-dataset bridge from MCNS neuron annotations.
+"""Monta uma ponte entre conjuntos de dados a partir das anotações MCNS.
 
-The MCNS annotation table contains explicit `flywireType` and `mancType`
-cross-references. This tool keeps only descending and motor neurons and
-summarizes their body-system/nerve information. It does not infer exact
-muscle names beyond the annotations supplied by the datasets.
+A tabela de anotações MCNS contém referências explícitas ``flywireType`` e
+``mancType``. Esta ferramenta mantém apenas neurônios descendentes e motores
+e resume as informações de nervo e sistema corporal. Não infere nomes exatos
+de músculos além das anotações fornecidas pelos conjuntos de dados.
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ COLUMNS = [
 
 
 def value(row: dict, key: str):
+    """Devolve um valor da linha ou None quando ele está vazio."""
+
     result = row.get(key)
     if result is None or result == "":
         return None
@@ -32,7 +34,7 @@ def value(row: dict, key: str):
 
 
 def target_system(row: dict) -> str:
-    """Infer a broad body system from MCNS/MANC nerve and class fields."""
+    """Deduz um sistema corporal amplo a partir dos campos de nervo e classe MCNS/MANC."""
     text = " ".join(
         str(value(row, key) or "")
         for key in ("subclass", "class", "entryNerve", "exitNerve", "mancType")
@@ -51,6 +53,8 @@ def target_system(row: dict) -> str:
 
 
 def clean_row(row: dict) -> dict:
+    """Converte uma anotação MCNS em um registro limpo para a ponte."""
+
     out = {
         "mcns_body_id": int(row["bodyId"]),
         "mcns_type": value(row, "type"),
@@ -75,6 +79,8 @@ def clean_row(row: dict) -> dict:
 
 
 def build_bridge(path: Path) -> dict:
+    """Filtra os neurônios descendentes e motores e monta a ponte entre MCNS e MANC."""
+
     table = feather.read_table(path, columns=COLUMNS)
     all_rows = table.to_pylist()
     selected = []
@@ -110,6 +116,8 @@ def build_bridge(path: Path) -> dict:
 
 
 def main() -> int:
+    """Executa a criação da ponte pela linha de comando."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--annotations", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

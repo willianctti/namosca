@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build data-backed MCNS Dm → descending → motor routes in two streaming passes."""
+"""Monta rotas MCNS Dm → descendente → motor em duas passagens de leitura em fluxo."""
 
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ import pyarrow.feather as feather
 
 
 def target_system(row: dict) -> str:
+    """Classifica a linha em um sistema corporal amplo."""
+
     text = " ".join(str(row.get(key) or "") for key in ("subclass", "class", "entryNerve", "exitNerve", "mancType")).lower()
     if any(x in text for x in ("proln", "legnp_t1", "dpron")): return "front_leg"
     if any(x in text for x in ("mesoln", "legnp_t2")): return "middle_leg"
@@ -22,16 +24,22 @@ def target_system(row: dict) -> str:
 
 
 def load_annotations(path: Path):
+    """Lê as anotações e indexa os neurônios pelo bodyId."""
+
     table = feather.read_table(path, columns=["bodyId", "flywireType", "mancBodyid", "mancType", "superclass", "type", "subclass", "class", "entryNerve", "exitNerve", "somaSide", "itoleeHl"])
     return {int(r["bodyId"]): r for r in table.to_pylist()}
 
 
 def batches(path: Path):
+    """Entrega as conexões em lotes para evitar carregar o arquivo inteiro."""
+
     table = feather.read_table(path, columns=["body_pre", "body_post", "weight"])
     yield from table.to_batches(max_chunksize=2_000_000)
 
 
 def build(annotations_path: Path, connections_path: Path) -> dict:
+    """Monta as rotas Dm → DN → MN em duas passagens sobre as conexões."""
+
     meta = load_annotations(annotations_path)
     dm = {body for body, row in meta.items() if str(row.get("flywireType") or "").lower().startswith("dm")}
     first = defaultdict(int)
@@ -85,6 +93,8 @@ def build(annotations_path: Path, connections_path: Path) -> dict:
 
 
 def main() -> int:
+    """Executa a construção das rotas pela linha de comando."""
+
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--annotations", type=Path, required=True)
     p.add_argument("--connections", type=Path, required=True)

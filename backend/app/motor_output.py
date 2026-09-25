@@ -1,4 +1,4 @@
-"""Translate LIF spikes into data-backed MCNS Dm → DN → MN routes."""
+"""Traduz picos do LIF em rotas MCNS Dm → DN → MN baseadas em dados."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from typing import Any
 
 
 def load_dm_routes(path: Path | None) -> dict[str, list[dict[str, Any]]]:
+    """Carrega as rotas e as indexa pelo tipo de neurônio Dm."""
+
     if path is None or not path.is_file():
         return {}
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -21,6 +23,8 @@ def load_dm_routes(path: Path | None) -> dict[str, list[dict[str, Any]]]:
 
 
 def summarize_motor_output(network: Any, frames: list[Any], routes_by_dm: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+    """Resume os tipos Dm, DN e MN presentes nos quadros de simulação."""
+
     cell_types = {str(neuron.id): str(neuron.cell_type or "") for neuron in network.neurons}
     active_dm: set[str] = set()
     for frame in frames:

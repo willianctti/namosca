@@ -1,3 +1,5 @@
+"""Testes dos adaptadores de provedores de dados."""
+
 from __future__ import annotations
 
 import json
@@ -12,6 +14,8 @@ from app.schemas import Region
 
 @pytest.mark.asyncio
 async def test_flywire_json_file_adapter(tmp_path: Path) -> None:
+    """Confere a leitura de um arquivo JSON pelo adaptador FlyWire."""
+
     source = {
         "neurons": [
             {
@@ -48,6 +52,8 @@ async def test_flywire_json_file_adapter(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_flywire_adapter_preserves_fafb_metadata(tmp_path: Path) -> None:
+    """Confere que o adaptador preserva os metadados do FAFB."""
+
     source = {
         "region": "optic_lobes",
         "coordinate_space": "swc_nanometers",
@@ -90,5 +96,5 @@ async def test_flywire_adapter_preserves_fafb_metadata(tmp_path: Path) -> None:
     assert graph.metadata["dataset"] == "FAFB v783 (CB)"
     assert graph.neurons[0].nt_type == "ACH"
     assert graph.neurons[0].cell_type == "T4a"
-    # Self-edges are excluded from the normalized topology.
+    # Auto-conexões são excluídas da topologia normalizada.
     assert graph.synapses == []

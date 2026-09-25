@@ -1,8 +1,8 @@
-"""Graph retrieval for the future authenticated FlyWire data phase.
+"""Obtenção de grafos para a próxima fase autenticada de dados FlyWire.
 
-The mock graph was intentionally removed. Until a real FlyWire export or
-authenticated proxy is configured, graph endpoints fail explicitly instead of
-showing fabricated neurons.
+O grafo simulado foi removido de propósito. Enquanto não houver uma
+exportação real do FlyWire ou um proxy autenticado, as rotas de grafo
+falham explicitamente em vez de mostrar neurônios fabricados.
 """
 
 from __future__ import annotations
@@ -17,11 +17,11 @@ from app.schemas import GraphQuery, Network, Region
 
 
 class NetworkUnavailable(RuntimeError):
-    """Raised when real FlyWire graph data is not configured or unavailable."""
+    """Erro levantado quando os dados reais do grafo FlyWire não estão configurados ou disponíveis."""
 
 
 class NetworkService:
-    """Fetch bounded real FlyWire graphs and cache successful results only."""
+    """Obtém grafos reais do FlyWire com limites e guarda apenas resultados bem-sucedidos."""
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class NetworkService:
         self._lock = asyncio.Lock()
 
     async def get_network(self, query: GraphQuery) -> Network:
-        """Return real FlyWire data or raise; never fall back to fake neurons."""
+        """Obtém dados reais do FlyWire ou lança erro; nunca usa neurônios falsos."""
 
         region = normalize_query_region(query.region)
         max_neurons = min(query.max_neurons, self.max_graph_neurons)
@@ -85,6 +85,8 @@ class NetworkService:
         return graph
 
     def cache_info(self) -> dict[str, Any]:
+        """Devolve informações sobre o cache e os limites configurados."""
+
         return {
             "entries": len(self._cache),
             "max_entries": self.cache_size,
@@ -95,10 +97,14 @@ class NetworkService:
         }
 
     def clear_cache(self) -> None:
+        """Limpa todos os grafos guardados no cache."""
+
         self._cache.clear()
 
 
 def normalize_query_region(value: Any) -> Region:
+    """Normaliza a região de uma consulta usando o esquema comum."""
+
     from app.schemas import normalize_region
 
     return normalize_region(value)

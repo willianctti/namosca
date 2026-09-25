@@ -1,4 +1,4 @@
-"""Simulation orchestration for local LIF and optional Axobug responses."""
+"""Coordena simulações LIF locais e respostas opcionais do Axobug."""
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ from app.simulation import _network_summary, run_local
 
 
 class SimulationService:
-    """Run simulations and normalize remote/local results."""
+    """Executa simulações e normaliza resultados remotos e locais."""
 
     def __init__(self, axobug: AxobugClient) -> None:
         self.axobug = axobug
 
     async def run(self, network: Network, request: SimulationRequest) -> SimulationResult:
-        """Execute the requested engine, falling back to LIF when needed."""
+        """Executa o motor pedido e usa LIF como alternativa quando necessário."""
 
         if request.engine == "axobug":
             try:
@@ -34,9 +34,9 @@ class SimulationService:
         return await run_local(network, request)
 
     async def _run_axobug(self, network: Network, request: SimulationRequest) -> SimulationResult:
-        """Map Axobug's documented spike frames to the normalized wire schema."""
+        """Converte quadros de picos do Axobug no formato normalizado da API."""
 
-        # Axobug accepts only four fixed durations in the public alpha.
+        # O Axobug aceita apenas quatro durações fixas na versão alpha pública.
         duration_ms = _nearest_axobug_duration(request.config.duration_ms)
         stimulus_name = _map_stimulus(request)
         remote = await self.axobug.run(
@@ -119,17 +119,17 @@ class SimulationService:
 
 
 def _nearest_axobug_duration(duration_ms: float) -> int:
-    """Map a requested duration to Axobug's documented allowed values."""
+    """Converte a duração pedida para um dos valores permitidos pelo Axobug."""
 
     allowed = (50, 100, 150, 200)
     return min(allowed, key=lambda value: abs(value - duration_ms))
 
 
 def _map_stimulus(request: SimulationRequest) -> str:
-    """Use the first explicit Axobug-compatible stimulus or a safe default."""
+    """Usa o primeiro estímulo explícito compatível com Axobug ou um padrão seguro."""
 
-    # The local schema intentionally leaves stimulus names open-ended. A UI can
-    # send an Axobug name through this small metadata convention.
+    # O esquema local deixa os nomes dos estímulos abertos. A interface pode
+    # enviar um nome do Axobug por esta pequena convenção de metadados.
     explicit = request.stimulus.role
     if explicit in {"loom", "sugar", "food", "scent", "touch", "sound", "color", "humidity", "heat", "bitter", "quiet"}:
         return explicit

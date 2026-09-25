@@ -1,4 +1,4 @@
-"""Allow `python -m app` during local development."""
+"""Permite executar ``python -m app`` durante o desenvolvimento local."""
 
 from __future__ import annotations
 

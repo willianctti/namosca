@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find direct descending-to-motor routes using MCNS↔MANC cross-references."""
+"""Encontra rotas diretas de descendentes para motores usando referências MCNS↔MANC."""
 
 from __future__ import annotations
 
@@ -12,15 +12,21 @@ from pathlib import Path
 
 
 def open_csv(path: Path):
+    """Abre um CSV normal ou compactado com gzip."""
+
     return gzip.open(path, "rt", encoding="utf-8", newline="") if path.suffix == ".gz" else path.open("r", encoding="utf-8", newline="")
 
 
 def rows(path: Path):
+    """Lê as linhas de um CSV."""
+
     with open_csv(path) as stream:
         yield from csv.DictReader(stream)
 
 
 def build_routes(bridge_path: Path, manc_attributes_path: Path, manc_connections_path: Path) -> dict:
+    """Agrupa as conexões diretas descendente-motor por tipo descendente."""
+
     bridge = json.loads(bridge_path.read_text(encoding="utf-8"))
     attrs = {}
     for row in rows(manc_attributes_path):
@@ -92,6 +98,8 @@ def build_routes(bridge_path: Path, manc_attributes_path: Path, manc_connections
 
 
 def main() -> int:
+    """Executa a construção das rotas pela linha de comando."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bridge", type=Path, required=True)
     parser.add_argument("--manc-attributes", type=Path, required=True)

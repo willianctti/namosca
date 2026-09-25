@@ -1,3 +1,5 @@
+"""Testes das ferramentas de preparação dos dados FlyWire e MANC."""
+
 from __future__ import annotations
 
 import argparse
@@ -11,6 +13,8 @@ from tools.prepare_manc_motor_catalog import build_catalog
 
 
 def _write_csv(path: Path, fieldnames: list[str], records: list[dict[str, object]]) -> None:
+    """Grava registros de teste em um CSV compactado."""
+
     with gzip.open(path, "wt", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fieldnames)
         writer.writeheader()
@@ -18,6 +22,8 @@ def _write_csv(path: Path, fieldnames: list[str], records: list[dict[str, object
 
 
 def test_prepare_flywire_graph_joins_swc_metadata_and_edges(tmp_path: Path) -> None:
+    """Confere a junção de metadados SWC e arestas no grafo."""
+
     archive_path = tmp_path / "skeletons.zip"
     with zipfile.ZipFile(archive_path, "w") as archive:
         archive.writestr(
@@ -93,6 +99,8 @@ def test_prepare_flywire_graph_joins_swc_metadata_and_edges(tmp_path: Path) -> N
 
 
 def test_manc_motor_catalog_groups_leg_motors_and_descending_inputs(tmp_path: Path) -> None:
+    """Confere o agrupamento de motores de perna e entradas descendentes."""
+
     attributes_path = tmp_path / "attributes.csv.gz"
     _write_csv(
         attributes_path,

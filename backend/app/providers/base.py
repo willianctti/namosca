@@ -1,4 +1,4 @@
-"""Provider interfaces and normalized graph helpers."""
+"""Interfaces de provedores e utilitários para normalizar grafos."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ from app.schemas import Network, Region
 
 
 class ProviderError(RuntimeError):
-    """A recoverable data-provider failure.
+    """Falha recuperável de um provedor de dados.
 
-    The API layer converts this into a structured fallback or a 503 response,
-    depending on the request's ``strict`` flag.
+    A camada da API transforma este erro em uma alternativa estruturada ou em
+    uma resposta 503, conforme a opção ``strict`` da solicitação.
     """
 
 
 class NetworkProvider(Protocol):
-    """Minimal asynchronous contract for graph providers."""
+    """Contrato assíncrono mínimo para provedores de grafos."""
 
     name: str
 
@@ -27,11 +27,11 @@ class NetworkProvider(Protocol):
         max_neurons: int,
         max_synapses: int,
     ) -> Network:
-        """Return a normalized, bounded network graph."""
+        """Devolve um grafo de rede normalizado e limitado."""
 
 
 def limit_graph(graph: Network, *, max_neurons: int, max_synapses: int) -> Network:
-    """Apply deterministic limits while preserving valid endpoint references."""
+    """Aplica limites determinísticos e preserva referências válidas entre neurônios."""
 
     if len(graph.neurons) <= max_neurons and len(graph.synapses) <= max_synapses:
         return graph

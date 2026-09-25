@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Summarize MANC motor and descending neurons from static CSV exports.
+"""Resume os neurônios motores e descendentes do MANC a partir de CSV estáticos.
 
-The full MANC connection table is streamed once. The output contains the
-annotated motor neurons, their broad target-system hints, and aggregate
-incoming connectivity. It does not claim to be a complete muscle atlas.
+A tabela completa de conexões do MANC é lida uma vez em fluxo. A saída
+contém os neurônios motores anotados, dicas amplas do sistema de destino e a
+conectividade de entrada agregada. Não pretende ser um atlas completo de
+músculos.
 """
 
 from __future__ import annotations
@@ -18,12 +19,16 @@ from typing import TextIO
 
 
 def open_csv(path: Path) -> TextIO:
+    """Abre um CSV normal ou compactado com gzip."""
+
     if path.suffix.lower() == ".gz":
         return gzip.open(path, "rt", encoding="utf-8", newline="")
     return path.open("r", encoding="utf-8", newline="")
 
 
 def first(row: dict[str, str], *keys: str) -> str:
+    """Devolve o primeiro campo preenchido entre os nomes informados."""
+
     for key in keys:
         value = row.get(key)
         if value is not None and str(value).strip():
@@ -32,11 +37,15 @@ def first(row: dict[str, str], *keys: str) -> str:
 
 
 def rows(path: Path):
+    """Lê as linhas de um CSV."""
+
     with open_csv(path) as stream:
         yield from csv.DictReader(stream)
 
 
 def parse_float(value: str) -> float | None:
+    """Converte um texto em decimal ou devolve None quando não consegue."""
+
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -44,7 +53,7 @@ def parse_float(value: str) -> float | None:
 
 
 def target_system(record: dict[str, str]) -> str:
-    """Return a broad, explicitly non-muscle-specific system hint."""
+    """Devolve uma dica ampla de sistema, sem detalhes específicos de músculo."""
 
     class_code = record["class"].lower()
     nerve = record["nerve"].lower()
@@ -67,6 +76,8 @@ def target_system(record: dict[str, str]) -> str:
 
 
 def load_attributes(path: Path) -> dict[str, dict[str, object]]:
+    """Lê os atributos dos neurônios e calcula sua categoria ampla."""
+
     result: dict[str, dict[str, object]] = {}
     for row in rows(path):
         root_id = first(row, "Root ID", "root_id", "id")
@@ -93,6 +104,8 @@ def load_attributes(path: Path) -> dict[str, dict[str, object]]:
 
 
 def build_catalog(attributes_path: Path, connections_path: Path) -> dict[str, object]:
+    """Monta o catálogo de motores e neurônios descendentes com suas conexões."""
+
     attributes = load_attributes(attributes_path)
     motor_ids = {
         root_id
@@ -182,6 +195,8 @@ def build_catalog(attributes_path: Path, connections_path: Path) -> dict[str, ob
 
 
 def main() -> int:
+    """Executa a criação do catálogo pela linha de comando."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--attributes", type=Path, required=True)
     parser.add_argument("--connections", type=Path, required=True)

@@ -1,9 +1,9 @@
-"""A small, deterministic Leaky Integrate-and-Fire (LIF) engine.
+"""Motor pequeno e determinístico de integração e vazamento (LIF).
 
-The engine stores one compact CSR-style adjacency structure and a short ring
-buffer of pending synaptic currents. It does not build a dense N x N matrix,
-which keeps memory proportional to the number of edges and the maximum synaptic
-delay instead of the square of the neuron count.
+O motor guarda uma estrutura de adjacência compacta no estilo CSR e um buffer
+circular curto para correntes sinápticas pendentes. Não cria uma matriz densa
+N x N; assim, a memória cresce com as arestas e o maior atraso, e não com o
+quadrado do número de neurônios.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ MAX_PENDING_ELEMENTS = 1_000_000
 
 @dataclass(slots=True)
 class StepResult:
-    """Result of advancing the LIF model by one time step."""
+    """Resultado de avançar o modelo LIF em um passo de tempo."""
 
     t_ms: float
     spikes: np.ndarray
@@ -33,7 +33,7 @@ class StepResult:
 
 
 class LIFSimulator:
-    """Event-driven LIF state for one network."""
+    """Estado LIF orientado a eventos para uma rede."""
 
     def __init__(self, network: Network, config: SimulationConfig) -> None:
         if not network.neurons:
@@ -57,14 +57,14 @@ class LIFSimulator:
                 "simulation topology exceeds the bounded delay buffer; "
                 "increase dt_ms or reduce graph size"
             )
-        # One extra slot prevents a delayed event from being overwritten by a
-        # later event with the same modulo index.
+        # Uma posição extra impede que um evento atrasado seja sobrescrito por outro
+        # evento com o mesmo resto de divisão.
         self._ring_size = max_delay_steps + 1
         self._pending = np.zeros((self._ring_size, self.neuron_count), dtype=np.float32)
         self._zero_input = np.zeros(self.neuron_count, dtype=np.float32)
 
     def _build_adjacency(self) -> None:
-        """Group outgoing edges by source and delay for fast vector updates."""
+        """Agrupa arestas de saída por origem e atraso para atualizar vetores rapidamente."""
 
         source_indices: list[int] = []
         target_indices: list[int] = []
@@ -79,15 +79,16 @@ class LIFSimulator:
             target_indices.append(target)
             signed_weights.append(-synapse.weight if synapse.inhibitory else synapse.weight)
             delays.append(synapse.delay_ms)
-        # The actual arrays are kept as compact integer/float vectors.
+        # Os vetores reais são mantidos compactos, com inteiros e decimais.
         self._edge_sources = np.asarray(source_indices, dtype=np.int32)
         self._edge_targets = np.asarray(target_indices, dtype=np.int32)
         self._edge_weights = np.asarray(signed_weights, dtype=np.float32)
         self._edge_delays = np.asarray(delays, dtype=np.float32)
         self._delay_buckets: dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
         for delay in sorted(set(float(value) for value in delays)):
-            # ``round`` is stable for the small delay values used by test and
-            # bounded graphs and keeps a one-tick delivery window for sub-ms delays.
+            # ``round`` é estável para os pequenos atrasos usados nos testes e grafos
+            # limitados, e mantém uma janela de entrega de um passo para atrasos
+            # menores que 1 ms.
             delay_steps = max(1, int(round(delay / self.config.dt_ms)))
             mask = np.isclose(self._edge_delays, delay)
             if not np.any(mask):
@@ -107,7 +108,7 @@ class LIFSimulator:
                 )
 
     def reset(self) -> None:
-        """Reset membrane and pending state without rebuilding topology."""
+        """Reinicia potenciais e eventos pendentes sem reconstruir a topologia."""
 
         self.voltage.fill(self.config.resting_potential)
         self.responding.fill(False)
@@ -121,7 +122,7 @@ class LIFSimulator:
         *,
         region: str | None = None,
     ) -> np.ndarray:
-        """Build a current vector for explicit IDs or a sensible input role."""
+        """Cria um vetor de corrente para IDs explícitos ou uma função de entrada adequada."""
 
         vector = np.zeros(self.neuron_count, dtype=np.float32)
         selected: list[int] = []
@@ -155,15 +156,15 @@ class LIFSimulator:
                 if selected:
                     break
         if not selected:
-            # A user may request a graph with custom role names. Injecting into
-            # the first few nodes is a deterministic last-resort behavior.
+            # A pessoa usuária pode pedir um grafo com nomes de função próprios.
+            # Injetar nos primeiros nós é uma última opção determinística.
             selected = list(range(min(4, self.neuron_count)))
         if selected:
             vector[np.asarray(sorted(set(selected)), dtype=np.int32)] = stimulus.intensity
         return vector
 
     def step(self, external_input: np.ndarray | None = None) -> StepResult:
-        """Advance one time step and return spikes plus membrane potentials."""
+        """Avança um passo e devolve picos e potenciais de membrana."""
 
         if external_input is None:
             external_input = self._zero_input
@@ -171,20 +172,20 @@ class LIFSimulator:
             raise ValueError("external input has the wrong shape")
 
         current_slot = self._step_index % self._ring_size
-        # Copy before clearing: NumPy basic slicing returns a view.
+        # Copia antes de limpar: o corte básico do NumPy devolve uma visão.
         pending_input = self._pending[current_slot].copy()
         self._pending[current_slot].fill(0.0)
 
-        # LIF update: v[t] = v_rest + (v[t-1] - v_rest) * exp(-dt/tau) + I.
-        # Subtracting/restoring the resting level is important when a caller
-        # chooses a non-zero resting potential.
+        # Atualização LIF: v[t] = v_rest + (v[t-1] - v_rest) * exp(-dt/tau) + I.
+        # Subtrair e restaurar o nível de repouso é importante quando quem
+        # chama escolhe um potencial de repouso diferente de zero.
         self.voltage -= self.config.resting_potential
         self.voltage *= self._decay
         self.voltage += self.config.resting_potential
         self.voltage += pending_input
         self.voltage += external_input
-        # A bounded voltage keeps malformed remote weights from causing an
-        # exponential/large float value and makes the demo stable.
+        # Limitar a tensão evita que pesos remotos malformados gerem valores
+        # exponenciais ou muito grandes e mantém a demonstração estável.
         upper_bound = max(self.config.threshold * 8.0, 8.0)
         np.clip(self.voltage, min=self.config.reset_potential - 2.0, max=upper_bound, out=self.voltage)
 
@@ -205,7 +206,7 @@ class LIFSimulator:
         )
 
     def _schedule_synapses(self, spikes: np.ndarray) -> None:
-        """Place outgoing currents into future ring-buffer slots."""
+        """Coloca correntes de saída em posições futuras do buffer circular."""
 
         if self._edge_sources.size == 0:
             return
@@ -217,7 +218,7 @@ class LIFSimulator:
             active_targets = targets[outgoing_mask]
             active_weights = weights[outgoing_mask]
             destination = (self._step_index + delay_steps) % self._ring_size
-            # add.at correctly handles convergence from multiple sources.
+            # add.at soma corretamente correntes que chegam de várias origens.
             np.add.at(self._pending[destination], active_targets, active_weights)
 
 
@@ -228,7 +229,7 @@ def _frame_from_step(
     max_spikes: int,
     include_voltage: bool,
 ) -> SpikeFrame:
-    """Convert a NumPy step result into a compact wire frame."""
+    """Converte o resultado de um passo NumPy em um quadro compacto para a API."""
 
     visible = result.spikes[:max_spikes]
     visible_ids = [simulator.neuron_ids[int(index)] for index in visible]
@@ -251,7 +252,7 @@ def _run_local_sync(
     *,
     max_steps: int = 200_000,
 ) -> tuple[list[SpikeFrame], SimulationStats, dict[str, Any]]:
-    """Synchronous core, safe to execute in a worker thread."""
+    """Núcleo síncrono, seguro para executar em uma linha de execução."""
 
     config = request.config
     simulation_network = network
@@ -285,8 +286,8 @@ def _run_local_sync(
     requested_steps = max(1, int(round(config.duration_ms / config.dt_ms)))
     steps = min(requested_steps, max_steps)
     requested_frame_stride = max(1, int(round(config.frame_interval_ms / config.dt_ms)))
-    # Preserve the requested cadence when possible, but never let a small
-    # dt/large duration combination create an unbounded response payload.
+    # Preserva o ritmo pedido quando possível, mas não deixa que uma combinação
+    # de dt pequeno e duração grande crie uma resposta sem limite.
     frame_stride = max(requested_frame_stride, int(math.ceil(steps / config.max_frames)))
     frames: list[SpikeFrame] = []
     peak_active = 0
@@ -325,7 +326,7 @@ def _run_local_sync(
 
 
 async def run_local(network: Network, request: SimulationRequest) -> SimulationResult:
-    """Run the LIF engine without blocking the asyncio event loop."""
+    """Executa o motor LIF sem bloquear o loop de eventos do asyncio."""
 
     frames, stats, metadata = await asyncio.to_thread(_run_local_sync, network, request)
     return SimulationResult(
@@ -339,7 +340,7 @@ async def run_local(network: Network, request: SimulationRequest) -> SimulationR
 
 
 def _network_summary(network: Network) -> Any:
-    """Avoid importing the route module; return a schema-compatible summary."""
+    """Evita importar o módulo de rotas e devolve um resumo compatível com o esquema."""
 
     from app.schemas import NetworkSummary
 
@@ -355,6 +356,6 @@ def _network_summary(network: Network) -> Any:
 
 
 def make_step_input(simulator: LIFSimulator, vector: np.ndarray) -> np.ndarray:
-    """Return an input vector without exposing mutable simulator internals."""
+    """Devolve um vetor de entrada sem expor detalhes mutáveis do simulador."""
 
     return vector if vector.shape == (simulator.neuron_count,) else np.zeros(simulator.neuron_count, dtype=np.float32)

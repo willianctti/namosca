@@ -1,8 +1,8 @@
-"""Compatibility runtime for the small ``/neurons``/``/synapses`` demo API.
+"""Estado de compatibilidade para a pequena API de demonstração ``/neurons``/``/synapses``.
 
-The primary API is stateless and uses a WebSocket session per visualization.
-These helpers keep the endpoint names used by the early single-file prototype
-working for simple frontends, without putting mutable state in module globals.
+A API principal não guarda estado e usa uma sessão WebSocket por visualização.
+Estes auxiliares mantêm os nomes das rotas do protótipo inicial funcionando
+para interfaces simples, sem colocar estado mutável em variáveis globais.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from app.simulation import LIFSimulator, StepResult
 
 
 class LegacyRuntime:
-    """One lightweight process-local LIF state for compatibility endpoints."""
+    """Estado LIF leve, local ao processo, para rotas de compatibilidade."""
 
     def __init__(self, network: Network) -> None:
         self.network = network
@@ -27,7 +27,7 @@ class LegacyRuntime:
         self.last_activity_ms: dict[str, float] = {}
 
     def inject(self, neuron_id: str, current: float) -> bool:
-        """Inject a short current pulse into one known neuron."""
+        """Aplica um pulso curto de corrente a um neurônio conhecido."""
 
         index = self.simulator.index_by_id.get(neuron_id)
         if index is None:
@@ -39,7 +39,7 @@ class LegacyRuntime:
         return True
 
     def step(self) -> StepResult:
-        """Advance one compatibility step and remember recent spike IDs."""
+        """Avança um passo de compatibilidade e guarda os IDs recentes de picos."""
 
         now_ms = self.simulator._step_index * self.config.dt_ms
         active = self.pulse_input if now_ms < self.pulse_until_ms else self.zero_input
@@ -50,6 +50,8 @@ class LegacyRuntime:
         return result
 
     def reset(self) -> None:
+        """Reinicia a simulação e os dados de atividade."""
+
         self.simulator.reset()
         self.pulse_input = self.zero_input
         self.pulse_until_ms = 0.0
@@ -57,7 +59,7 @@ class LegacyRuntime:
         self.last_activity_ms.clear()
 
     def neuron_payload(self) -> list[dict[str, object]]:
-        """Return the legacy neuron shape with current membrane values."""
+        """Devolve o formato antigo de neurônio com os potenciais de membrana atuais."""
 
         payload: list[dict[str, object]] = []
         for index, neuron in enumerate(self.network.neurons):
