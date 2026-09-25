@@ -27,6 +27,7 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
   quantos deles receberam spike;
 - a interface também calcula quantos Dm são topologicamente alcançáveis e a
   distância mínima em sinapses;
+- o botão `Mostrar caminhos até Dm` destaca até três caminhos curtos no grafo;
 - o seletor de população permite comparar entradas `Pm`, `LMa`, `Tm`, `Dm`,
   `MeMe` e neurônios sem tipo;
 - `Dm` funciona como controle direto de entrada, não como prova de um
