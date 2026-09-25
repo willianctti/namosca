@@ -101,6 +101,24 @@ parâmetros do corpo.
 - **Contrafactual:** simulação que altera uma hipótese para testar sua
   sensibilidade; não é uma observação biológica.
 
+## Demonstração prática de locomoção
+
+O frontend possui um diagrama demonstrativo de uma mosca com seis pernas. Quando
+uma execução registra Dm ativos, as pernas são destacadas e um proxy de resposta
+é animado.
+
+Esse mapeamento é uma hipótese de interface:
+
+```text
+Dm ativo → resposta motora genérica → pernas destacadas
+```
+
+Ele não afirma que cada Dm ativa uma perna específica. Para fazer essa
+associação de forma biológica, seria necessário identificar os neurônios
+motores, os nervos, as sinapses neuromusculares e os músculos correspondentes.
+O diagrama é portanto uma visualização demonstrativa, não uma reconstrução
+muscular do FAFB.
+
 ## Status e próximos limites
 
 O relatório e a demonstração no frontend congelam esta primeira fase. A

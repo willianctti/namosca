@@ -148,6 +148,15 @@
     .report-empty { margin-top: 8px; color: var(--muted); font-size: 11px; }
     .demo-panel { border-color: #ffe18a44; background: #ffe18a08; }
     .demo-panel h2 { color: var(--yellow); }
+    .fly-body-demo { margin-top: 10px; padding: 6px; border: 1px solid #ffe18a2b; border-radius: 8px; background: #05081766; }
+    .fly-body-demo svg { display: block; width: 100%; max-height: 150px; }
+    .fly-demo-wings { fill: #65f2ff18; stroke: #65f2ff66; stroke-width: 2; }
+    .fly-demo-body { fill: #d47a43; stroke: #ffe18a; stroke-width: 2; }
+    .fly-demo-head { fill: #2b1d36; stroke: #ff9b86; stroke-width: 2; }
+    .demo-leg { fill: none; stroke: #65718e; stroke-width: 4; stroke-linecap: round; transition: stroke .25s ease, filter .25s ease; }
+    .fly-body-demo.active .demo-leg { stroke: var(--yellow); filter: drop-shadow(0 0 5px var(--yellow)); animation: leg-pulse .48s ease-in-out infinite alternate; }
+    .fly-body-demo.active .demo-leg:nth-of-type(2n) { animation-delay: .18s; }
+    @keyframes leg-pulse { from { opacity: .45; stroke-width: 3; } to { opacity: 1; stroke-width: 6; } }
     .demo-track { position: relative; height: 46px; margin-top: 10px; overflow: hidden; border: 1px solid #ffe18a44; border-radius: 8px; background: linear-gradient(90deg, #ffffff08, #ffe18a12, #ffffff08); }
     .demo-track::before { position: absolute; top: 22px; right: 10px; left: 10px; height: 1px; background: #ffe18a55; content: ""; }
     .demo-beacon { position: absolute; top: 13px; left: 12px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #101a38; background: var(--yellow); box-shadow: 0 0 0 5px #ffe18a22, 0 0 20px var(--yellow); font-size: 9px; font-weight: 800; transition: left .7s ease; }
@@ -267,6 +276,19 @@
       <div class="demo-panel">
         <h2>Demonstração de resposta</h2>
         <div class="report-note">Proxy visual para atividade descendente. Não é uma animação de caminhada ou pulo validada.</div>
+        <div class="fly-body-demo" id="flyBodyDemo" aria-label="Diagrama demonstrativo de uma mosca">
+          <svg viewBox="0 0 240 150" role="img" aria-label="Mosca estilizada com pernas destacadas">
+            <ellipse class="fly-demo-wings" cx="120" cy="76" rx="86" ry="30" />
+            <ellipse class="fly-demo-body" cx="120" cy="82" rx="30" ry="44" />
+            <circle class="fly-demo-head" cx="120" cy="35" r="22" />
+            <path class="demo-leg" d="M100 63 L55 48 L28 58" />
+            <path class="demo-leg" d="M100 77 L48 78 L20 92" />
+            <path class="demo-leg" d="M103 92 L60 112 L38 132" />
+            <path class="demo-leg" d="M140 63 L185 48 L212 58" />
+            <path class="demo-leg" d="M140 77 L192 78 L220 92" />
+            <path class="demo-leg" d="M137 92 L180 112 L202 132" />
+          </svg>
+        </div>
         <div class="demo-track" id="demoTrack"><div class="demo-beacon" id="demoBeacon">D</div></div>
         <div id="demoStatus" class="demo-status">Aguardando uma simulação com atividade em Dm.</div>
         <div class="demo-disclaimer">Contrafactual computacional: não representa comportamento biológico comprovado.</div>
@@ -402,7 +424,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"), localAnalysis: $("localAnalysis"), reportTable: $("reportTable"), reportEmpty: $("reportEmpty"), clearReport: $("clearReportBtn"), demoTrack: $("demoTrack"), demoStatus: $("demoStatus"), playDemo: $("playDemoBtn"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"), localAnalysis: $("localAnalysis"), reportTable: $("reportTable"), reportEmpty: $("reportEmpty"), clearReport: $("clearReportBtn"), demoTrack: $("demoTrack"), demoStatus: $("demoStatus"), playDemo: $("playDemoBtn"), flyBodyDemo: $("flyBodyDemo"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -599,10 +621,12 @@
     function playBehaviorDemo() {
       updateBehaviorDemo(lastDmActive);
       ui.demoTrack.classList.remove("active");
+      ui.flyBodyDemo.classList.remove("active");
       void ui.demoTrack.offsetWidth;
       if (lastDmActive > 0) {
         ui.demoTrack.classList.add("active");
-        ui.demoStatus.textContent = `Proxy de resposta descendente: ${lastDmActive} Dm ativo(s). Não é andar/pular biologicamente validado.`;
+        ui.flyBodyDemo.classList.add("active");
+        ui.demoStatus.textContent = `Proxy de resposta descendente: ${lastDmActive} Dm ativo(s) → pernas destacadas. Não é andar biologicamente validado.`;
       } else {
         ui.demoStatus.textContent = "Sem Dm ativo: nenhum proxy de resposta será animado.";
       }
@@ -1010,6 +1034,7 @@
         console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
         updateBehaviorDemo(Number(ui.flywireActiveDescending.textContent) || 0);
         recordCircuitExperiment({ inputGroup, groupLabel, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, result, reachability });
+        if (lastDmActive > 0) playBehaviorDemo();
         ui.flywireStatus.textContent = `LIF local (${groupLabel}, ${ablationLabel}${counterfactualLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos destacados, ${ui.flywireActiveDescending.textContent} Dm ativos e ${reachability.reachable} Dm alcançáveis na topologia. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
       } catch (error) {
@@ -1219,7 +1244,7 @@
     ui.showPaths.addEventListener("click", () => { if (flywire.lastInputIds.length) showTopologicalPaths(flywire.lastInputIds); else ui.pathInfo.textContent = "Faça uma simulação primeiro para definir a entrada."; });
     ui.clearReport.addEventListener("click", () => { try { localStorage.setItem(REPORT_KEY, "[]"); } catch (_) { /* storage is optional */ } renderCircuitReport(); });
     ui.playDemo.addEventListener("click", playBehaviorDemo);
-    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; if (flywire.loaded) { highlightPersistentFlywireSpikes([]); clearTopologicalPaths(); } else { flywire.flashes.clear(); flywire.persistent.clear(); } ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.flywireActiveDescending.textContent = "—"; updateBehaviorDemo(0); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
+    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; if (flywire.loaded) { highlightPersistentFlywireSpikes([]); clearTopologicalPaths(); } else { flywire.flashes.clear(); flywire.persistent.clear(); } ui.demoTrack.classList.remove("active"); ui.flyBodyDemo.classList.remove("active"); ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.flywireActiveDescending.textContent = "—"; updateBehaviorDemo(0); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
     function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
     initThree(); setMode("flywire"); renderCircuitReport(); updateBehaviorDemo(0); checkBackend(); animate();
   </script>

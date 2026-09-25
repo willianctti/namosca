@@ -43,8 +43,9 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
 - o botão de limpeza remove os destaques e o gráfico de frames;
 - o painel inclui um glossário de GABA, ACH, OCT, Dm, syn_count e LIF;
 - o relatório local registra baseline, ablações e contrafactuais;
-- a demonstração de resposta é um proxy visual de atividade descendente,
-  claramente identificada como não biológica.
+- a demonstração de resposta é um proxy visual de atividade descendente com
+  um diagrama de mosca e pernas destacados, claramente identificada como
+  hipótese computacional e não biológica;
 
 A entrada inicial do LIF local é exploratória: ela usa os primeiros
 neurônios de maior grau da sub-rede e ainda não representa um estímulo

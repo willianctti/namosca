@@ -297,9 +297,10 @@ O protocolo congelado da primeirasub-rede, os resultados das condições
 [`docs/FLYWIRE_REPORT.md`](docs/FLYWIRE_REPORT.md).
 
 O frontend agora também mantém um relatório local das execuções, destaca
-DMs com spike e oferece uma demonstração visual de resposta descendente.
-Essa demonstração é um proxy computacional explicitamente não biológico; ela
-não representa caminhada, pulo ou escape validados.
+DMs com spike e oferece uma demonstração visual de resposta descendente com
+um diagrama de mosca e pernas destacados. Essa demonstração é um proxy
+computacional explicitamente não biológico; ela não representa caminhada,
+pulo ou escape validados.
 
 | Condição | Spikes | Dm ativos |
 |---|---:|---:|
