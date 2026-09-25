@@ -42,4 +42,6 @@ descendentes do gânglio ventral por streaming, e
 `tools/prepare_mcns_bridge.py` para gerar a ponte MCNS → FAFB/MANC a partir
 das anotações Feather, e `tools/build_motor_routes.py` para cruzar essa ponte
 com as conexões MANC e listar rotas descendente → motor, e
-`tools/summarize_motor_output.py` para agregar essas rotas por sistema corporal.
+`tools/summarize_motor_output.py` para agregar essas rotas por sistema corporal, e
+`tools/build_mcns_dm_routes.py` para localizar caminhos `Dm → DN → MN` no
+conectoma completo do MCNS.

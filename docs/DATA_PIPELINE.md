@@ -150,7 +150,26 @@ Eles não significam diretamente:
 - comportamento final;
 - probabilidade de movimento.
 
-## 7. O que é dado, modelo e hipótese
+## 7. Rotas `Dm` reais no MCNS
+
+O conectoma completo do MCNS foi lido por streaming em dois passos. Primeiro
+foram selecionadas conexões `Dm → descendente`; depois, `descendente → motor`.
+O resultado está em `data/flywire/dm_dn_mn_routes.json`.
+
+```text
+Dm bodies: 7.187
+Dm → descendentes: 107 arestas
+descendentes intermediários: 10
+descendente → motor: 164 arestas
+Dm → DN → MN: 164 caminhos
+Dm → MN direto: 0
+```
+
+A maior parte dessas rotas termina em abdômen; apenas uma pequena parte termina
+em asa ou pernas. Isso é um resultado real do dataset, não uma escolha para
+forçar uma resposta de caminhada. O mapa será usado para mostrar quando a
+simulação realmente alcançar esses caminhos.
+
 
 ### Dado real
 
