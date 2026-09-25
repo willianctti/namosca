@@ -183,6 +183,26 @@ rotas diretas e agregadas: não incluem todos os caminhos premotores, não
 provam um comportamento específico e ainda não são um mapa completo de
 músculo/articulação.
 
+## Saída motora por segmento
+
+As rotas diretas foram agregadas por tipo de neurônio descendente e sistema
+corporal. O catálogo final contém 422 tipos de drivers, dos quais 344 têm
+conexão direta com algum motor de perna e 258 com algum motor de asa.
+
+Totais de sinapses diretas por sistema:
+
+```text
+abdômen: 56.920
+asas: 53.655
+perna dianteira: 46.498
+perna traseira: 23.609
+perna do meio: 14.700
+```
+
+Esses valores são pesos sinápticos agregados, não uma medida de força,
+movimento ou comportamento. O mapa está em
+`data/flywire/motor_output_map.json` e será a base para escolher quais
+sistemas da neuromecânica virtual devem reagir a cada driver.
 
 O frontend possui um diagrama demonstrativo de uma mosca com seis pernas. Quando
 uma execução registra Dm ativos, as pernas são destacadas e um proxy de resposta
