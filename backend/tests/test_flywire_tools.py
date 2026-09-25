@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 from tools.prepare_flywire_graph import build_graph
+from tools.prepare_manc_motor_catalog import build_catalog
 
 
 def _write_csv(path: Path, fieldnames: list[str], records: list[dict[str, object]]) -> None:
@@ -89,3 +90,33 @@ def test_prepare_flywire_graph_joins_swc_metadata_and_edges(tmp_path: Path) -> N
     assert graph["synapses"][0]["synapse_count"] == 10
     assert graph["synapses"][0]["inhibitory"] is True
     assert graph["metadata"]["counts"]["filtered_connection_rows"] == 2
+
+
+def test_manc_motor_catalog_groups_leg_motors_and_descending_inputs(tmp_path: Path) -> None:
+    attributes_path = tmp_path / "attributes.csv.gz"
+    _write_csv(
+        attributes_path,
+        [
+            "Root ID", "Top in/out region", "Flow", "Super Class", "Class",
+            "Sub Class", "Nerve", "Soma side", "Primary Cell Type",
+            "Predicted NT type", "Predicted NT confidence",
+        ],
+        [
+            {"Root ID": "10", "Flow": "efferent", "Super Class": "motor", "Class": "fl", "Sub Class": "MN-LegNpT1", "Nerve": "ProLN_R", "Primary Cell Type": "MNfl01", "Predicted NT type": "GLUT"},
+            {"Root ID": "20", "Flow": "afferent", "Super Class": "descending", "Class": "lt", "Sub Class": "DN-brain", "Nerve": "CvC", "Primary Cell Type": "DN01"},
+            {"Root ID": "30", "Flow": "efferent", "Super Class": "motor", "Class": "wm", "Sub Class": "MN-wing", "Nerve": "ADMN_R", "Primary Cell Type": "MNwm01"},
+        ],
+    )
+    connections_path = tmp_path / "connections.csv.gz"
+    _write_csv(
+        connections_path,
+        ["pre_root_id", "post_root_id", "neuropil", "syn_count", "nt_type"],
+        [{"pre_root_id": "20", "post_root_id": "10", "neuropil": "LegNp_T1_R", "syn_count": "12", "nt_type": ""}],
+    )
+
+    catalog = build_catalog(attributes_path, connections_path)
+    assert catalog["counts"]["motor_neurons"] == 2
+    assert catalog["counts"]["descending_neurons"] == 1
+    assert catalog["counts"]["motor_target_systems"] == {"front_leg": 1, "wing": 1}
+    motor = next(item for item in catalog["motor_neurons"] if item["root_id"] == "10")
+    assert motor["direct_descending_input_synapses"] == 12

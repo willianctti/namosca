@@ -266,6 +266,29 @@ Depois que o endpoint `/api/network` funcionar:
 5. mapear populações motoras para as animações;
 6. manter a fase Axobug como comparação.
 
+## MANC e saída motora
+
+Para sair do cérebro eapproximar o controle corporal, o projeto também usa
+os arquivos do MANC v1.2.1:
+
+```text
+Neuron Attributes
+Connections (Filtered)
+```
+
+O catálogo é gerado por:
+
+```bash
+python tools/prepare_manc_motor_catalog.py \
+  --attributes /caminho/neurons.csv.gz \
+  --connections /caminho/connections.csv.gz \
+  --output ../data/flywire/manc_motor_catalog.json
+```
+
+O catálogo agrupa candidatos por nervo e sistema amplo. Ele não é ainda um
+mapa de músculos: `Body Part` e `Function` vêm vazios no MANC, e o atlas
+muscular do FANC continua sendo necessário.
+
 ## 8. Memória e desempenho
 
 Os limites atuais são propositalmente conservadores:

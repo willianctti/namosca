@@ -35,6 +35,7 @@ Veja o guia:
 ```
 
 O arquivo bruto de 15 GB não deve ser carregado diretamente pelo FastAPI.
-Use `tools/inspect_flywire.py` para inspecionar os arquivos e
-`tools/prepare_flywire_graph.py` para gerar uma sub-rede normalizada por
-streaming, cruzando skeletons, conexões, tipos celulares e neurotransmissores.
+Use `tools/inspect_flywire.py` para inspecionar os arquivos,
+`tools/prepare_flywire_graph.py` para gerar a sub-rede cerebral e
+`tools/prepare_manc_motor_catalog.py` para catalogar neurônios motores e
+descendentes do gânglio ventral por streaming.

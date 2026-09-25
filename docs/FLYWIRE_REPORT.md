@@ -101,6 +101,51 @@ parâmetros do corpo.
 - **Contrafactual:** simulação que altera uma hipótese para testar sua
   sensibilidade; não é uma observação biológica.
 
+## Ponte inicial com o MANC
+
+Os arquivos do MANC v1.2.1 foram processados pelo comando:
+
+```bash
+python backend/tools/prepare_manc_motor_catalog.py \
+  --attributes /home/mindwill/Downloads/neurons(1).csv.gz \
+  --connections /home/mindwill/Downloads/connections_princeton.csv.gz \
+  --output data/flywire/manc_motor_catalog.json
+```
+
+O catálogo MANC confirmou:
+
+```text
+23.665 atributos de neurônios
+737 neurônios motores
+1.328 neurônios descendentes
+6.239.883 linhas de conexões
+```
+
+A classificação ampla por nervo/sistema encontrou:
+
+```text
+perna dianteira: 144 neurônios motores
+perna do meio: 121
+perna traseira: 131
+asas: 68
+abdômen: 229
+halteres: 20
+pescoço: 24
+```
+
+Também foram encontrados:
+
+```text
+25.818 linhas de conexão descendente → motor
+234.281 sinapses agregadas descendente → motor
+```
+
+Isso já fornece uma ponte real entre atividade descendente e circuitos motores
+do gânglio ventral. Ainda não é um mapa completo de músculos: as colunas
+`Body Part` e `Function` do MANC estão vazias, e o `nt_type` da tabela de
+conexões também está vazio. O próximo nível exige o atlas de projeção
+muscular do FANC e a ponte morfológica entre FAFB e MANC.
+
 ## Demonstração prática de locomoção
 
 O frontend possui um diagrama demonstrativo de uma mosca com seis pernas. Quando

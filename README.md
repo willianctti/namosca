@@ -314,6 +314,11 @@ A leitura correta é: o modelo local encontrou um gargalo computacional na
 aresta `LMa2 → MTe52`. A leitura incorreta seria afirmar que isso já prova
 comportamento de pulo ou fuga.
 
+A ponte inicial com o MANC também já foi processada: 737 neurônios motores,
+1.328 descendentes e 25.818 linhas de conexão descendente → motor foram
+catalogadas. As colunas de corpo e função do MANC estão vazias; o atlas
+muscular do FANC ainda é necessário para ligar um MN a um músculo específico.
+
 Termos usados no projeto:
 
 - **GABA:** neurotransmissor geralmente inibitório; no LIF local funciona
@@ -611,7 +616,8 @@ namosca/
 |   |
 |   |-- tools/
 |   |   |-- inspect_flywire.py
-|   |   `-- prepare_flywire_graph.py
+|   |   |-- prepare_flywire_graph.py
+|   |   `-- prepare_manc_motor_catalog.py
 |   |
 |   `-- tests/
 |
