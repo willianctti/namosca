@@ -148,6 +148,9 @@
     .report-empty { margin-top: 8px; color: var(--muted); font-size: 11px; }
     .demo-panel { border-color: #ffe18a44; background: #ffe18a08; }
     .demo-panel h2 { color: var(--yellow); }
+    /* Keep the live fly visible while the controls remain focused on the left. */
+    .demo-panel { position: fixed; top: 18px; right: 18px; z-index: 6; width: min(340px, calc(100vw - 36px)); max-height: calc(100vh - 300px); overflow-y: auto; }
+    #response-panel { top: auto; right: 18px; bottom: 18px; max-height: calc(100vh - 360px); }
     .fly-body-demo { margin-top: 10px; padding: 6px; border: 1px solid #ffe18a2b; border-radius: 8px; background: #05081766; }
     .fly-body-demo svg { display: block; width: 100%; max-height: 150px; }
     .fly-demo-wings { fill: #65f2ff18; stroke: #65f2ff66; stroke-width: 2; }
@@ -168,6 +171,7 @@
     @media (max-width: 720px) {
       #controls { top: 10px; left: 10px; width: min(330px, calc(100vw - 20px)); max-height: 48vh; padding: 14px; }
       #response-panel { top: auto; right: 10px; bottom: 10px; width: calc(100vw - 20px); max-height: 45vh; padding: 0; }
+      .demo-panel { top: 10px; right: 10px; width: min(300px, calc(100vw - 20px)); max-height: 42vh; }
       #response-panel .panel-content { max-height: 40vh; padding: 0 14px 14px; }
       #info { display: none; }
     }
