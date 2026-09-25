@@ -161,6 +161,11 @@
     .fly-demo-head { fill: #2b1d36; stroke: #ff9b86; stroke-width: 2; }
     .demo-leg { fill: none; stroke: #65718e; stroke-width: 4; stroke-linecap: round; transition: stroke .25s ease, filter .25s ease; }
     .fly-body-demo.active .demo-leg { stroke: var(--yellow); filter: drop-shadow(0 0 5px var(--yellow)); animation: leg-pulse .48s ease-in-out infinite alternate; }
+    .fly-body-demo.system-wing .fly-demo-wings { fill: #65f2ff66; stroke: var(--cyan); filter: drop-shadow(0 0 7px var(--cyan)); animation: wing-pulse .32s ease-in-out infinite alternate; }
+    .fly-body-demo.system-abdomen .fly-demo-body { fill: #ff9a62; stroke: #fff0a6; filter: drop-shadow(0 0 7px #ff9a62); animation: abdomen-pulse .55s ease-in-out infinite alternate; }
+    .fly-body-demo.system-haltere .fly-demo-haltere { fill: var(--yellow); filter: drop-shadow(0 0 5px var(--yellow)); }
+    @keyframes wing-pulse { from { opacity: .55; transform: scaleY(.92); } to { opacity: 1; transform: scaleY(1.08); } }
+    @keyframes abdomen-pulse { from { transform: scale(.96); } to { transform: scale(1.04); } }
     .fly-body-demo.active .demo-leg:nth-of-type(2n) { animation-delay: .18s; }
     @keyframes leg-pulse { from { opacity: .45; stroke-width: 3; } to { opacity: 1; stroke-width: 6; } }
     .demo-track { position: relative; height: 46px; margin-top: 10px; overflow: hidden; border: 1px solid #ffe18a44; border-radius: 8px; background: linear-gradient(90deg, #ffffff08, #ffe18a12, #ffffff08); }
@@ -294,6 +299,8 @@
             <g id="flyBodyVisual">
               <ellipse class="fly-demo-wings" cx="120" cy="76" rx="86" ry="30" />
               <ellipse class="fly-demo-body" cx="120" cy="82" rx="30" ry="44" />
+              <circle class="fly-demo-haltere" cx="91" cy="50" r="5" />
+              <circle class="fly-demo-haltere" cx="149" cy="50" r="5" />
               <circle class="fly-demo-head" cx="120" cy="35" r="22" />
               <path id="demoLeg0" class="demo-leg" d="M100 63 L55 48 L28 58" />
               <path id="demoLeg1" class="demo-leg" d="M100 77 L48 78 L20 92" />
@@ -453,6 +460,7 @@
     let lastBrain = null, lastRequest = null, history = [];
     let currentMode = "flywire";
     let lastDmActive = 0;
+    let lastMotorSystems = {};
     let behaviorDemoActive = false;
     let behaviorDemoPhase = 0;
     let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, pathOverlay: null, pathNodeOverlay: null, overrideEdge: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
@@ -662,8 +670,15 @@
       ui.flyBodyVisual.setAttribute("transform", `translate(0 ${bob.toFixed(2)}) rotate(${tilt.toFixed(2)} 120 82)`);
     }
 
-    function updateBehaviorDemo(dmActive) {
+    function updateBehaviorDemo(dmActive, systems = null) {
       lastDmActive = Number(dmActive) || 0;
+      if (systems) lastMotorSystems = systems;
+      const hasMappedSystem = Object.keys(lastMotorSystems || {}).length > 0;
+      const hasLeg = ["front_leg", "middle_leg", "hind_leg"].some(system => Number(lastMotorSystems[system] || 0) > 0);
+      if (hasMappedSystem) ui.flyBodyDemo.classList.toggle("system-wing", Number(lastMotorSystems.wing || 0) > 0);
+      if (hasMappedSystem) ui.flyBodyDemo.classList.toggle("system-abdomen", Number(lastMotorSystems.abdomen || 0) > 0);
+      if (hasMappedSystem) ui.flyBodyDemo.classList.toggle("system-haltere", Number(lastMotorSystems.haltere || 0) > 0);
+      if (hasMappedSystem) ui.flyBodyDemo.classList.toggle("active", hasLeg || Number(lastMotorSystems.wing || 0) > 0 || Number(lastMotorSystems.abdomen || 0) > 0 || Number(lastMotorSystems.haltere || 0) > 0);
       if (!lastDmActive) {
         behaviorDemoActive = false;
         ui.demoTrack.classList.remove("active");
@@ -1094,7 +1109,7 @@
           const systemText = Object.entries(motorOutput.systems || {}).map(([name, value]) => `${name}: ${value}`).join(" · ");
           ui.demoStatus.textContent = `Rota Dm → DN → MN atingida: ${motorOutput.active_dm_count} tipo(s) Dm. ${systemText || "sem sistema classificado"}. Pesos são conectômicos, não força muscular.`;
         }
-        updateBehaviorDemo(Number(ui.flywireActiveDescending.textContent) || 0);
+        updateBehaviorDemo(Number(ui.flywireActiveDescending.textContent) || 0, motorOutput.systems || {});
         recordCircuitExperiment({ inputGroup, groupLabel, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, result, reachability });
         if (lastDmActive > 0) playBehaviorDemo();
         ui.flywireStatus.textContent = `LIF local (${groupLabel}, ${ablationLabel}${counterfactualLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos destacados, ${ui.flywireActiveDescending.textContent} Dm ativos e ${reachability.reachable} Dm alcançáveis na topologia. Entrada exploratória, não estímulo biológico validado.`;
