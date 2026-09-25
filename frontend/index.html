@@ -278,16 +278,18 @@
         <div class="report-note">Atividade descendente real do modelo; a parte do corpo ainda não é identificada pelo FAFB.</div>
         <div class="demo-disclaimer"><strong>Mapeamento de demonstração:</strong> Dm → pernas foi escolhido como hipótese visual. Não é uma atribuição do FlyWire nem uma medição de locomoção.</div>
         <div class="fly-body-demo" id="flyBodyDemo" aria-label="Diagrama demonstrativo de uma mosca">
-          <svg viewBox="0 0 240 150" role="img" aria-label="Mosca estilizada com pernas destacadas">
-            <ellipse class="fly-demo-wings" cx="120" cy="76" rx="86" ry="30" />
-            <ellipse class="fly-demo-body" cx="120" cy="82" rx="30" ry="44" />
-            <circle class="fly-demo-head" cx="120" cy="35" r="22" />
-            <path class="demo-leg" d="M100 63 L55 48 L28 58" />
-            <path class="demo-leg" d="M100 77 L48 78 L20 92" />
-            <path class="demo-leg" d="M103 92 L60 112 L38 132" />
-            <path class="demo-leg" d="M140 63 L185 48 L212 58" />
-            <path class="demo-leg" d="M140 77 L192 78 L220 92" />
-            <path class="demo-leg" d="M137 92 L180 112 L202 132" />
+          <svg viewBox="0 0 240 150" role="img" aria-label="Mosca virtual com pernas articuladas">
+            <g id="flyBodyVisual">
+              <ellipse class="fly-demo-wings" cx="120" cy="76" rx="86" ry="30" />
+              <ellipse class="fly-demo-body" cx="120" cy="82" rx="30" ry="44" />
+              <circle class="fly-demo-head" cx="120" cy="35" r="22" />
+              <path id="demoLeg0" class="demo-leg" d="M100 63 L55 48 L28 58" />
+              <path id="demoLeg1" class="demo-leg" d="M100 77 L48 78 L20 92" />
+              <path id="demoLeg2" class="demo-leg" d="M103 92 L60 112 L38 132" />
+              <path id="demoLeg3" class="demo-leg" d="M140 63 L185 48 L212 58" />
+              <path id="demoLeg4" class="demo-leg" d="M140 77 L192 78 L220 92" />
+              <path id="demoLeg5" class="demo-leg" d="M137 92 L180 112 L202 132" />
+            </g>
           </svg>
         </div>
         <div class="demo-track" id="demoTrack"><div class="demo-beacon" id="demoBeacon">D</div></div>
@@ -425,7 +427,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"), localAnalysis: $("localAnalysis"), reportTable: $("reportTable"), reportEmpty: $("reportEmpty"), clearReport: $("clearReportBtn"), demoTrack: $("demoTrack"), demoStatus: $("demoStatus"), playDemo: $("playDemoBtn"), flyBodyDemo: $("flyBodyDemo"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"), localAnalysis: $("localAnalysis"), reportTable: $("reportTable"), reportEmpty: $("reportEmpty"), clearReport: $("clearReportBtn"), demoTrack: $("demoTrack"), demoStatus: $("demoStatus"), playDemo: $("playDemoBtn"), flyBodyDemo: $("flyBodyDemo"), flyBodyVisual: $("flyBodyVisual"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -434,6 +436,8 @@
     let lastBrain = null, lastRequest = null, history = [];
     let currentMode = "flywire";
     let lastDmActive = 0;
+    let behaviorDemoActive = false;
+    let behaviorDemoPhase = 0;
     let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, pathOverlay: null, pathNodeOverlay: null, overrideEdge: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const fixed = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
@@ -612,8 +616,42 @@
       renderCircuitReport();
     }
 
+    const VIRTUAL_LEG_JOINTS = [
+      { hip: [100, 63], angle: -2.50, phase: 0 },
+      { hip: [100, 77], angle: -2.00, phase: Math.PI },
+      { hip: [103, 92], angle: -2.30, phase: Math.PI / 2 },
+      { hip: [140, 63], angle: -0.64, phase: Math.PI },
+      { hip: [140, 77], angle: -1.14, phase: 0 },
+      { hip: [137, 92], angle: -0.84, phase: Math.PI / 2 }
+    ];
+
+    function updateVirtualFlyBody(now) {
+      if (!ui.flyBodyVisual) return;
+      const intensity = behaviorDemoActive ? clamp(lastDmActive / 6, 0, 1) : 0;
+      if (behaviorDemoActive) behaviorDemoPhase = now * (1.2 + intensity * 2.2);
+      VIRTUAL_LEG_JOINTS.forEach((joint, index) => {
+        const wave = Math.sin(behaviorDemoPhase + joint.phase);
+        const femurAngle = joint.angle + wave * .20 * intensity;
+        const kneeX = joint.hip[0] + Math.cos(femurAngle) * 30;
+        const kneeY = joint.hip[1] + Math.sin(femurAngle) * 30;
+        const tibiaAngle = femurAngle + (.32 + .12 * Math.cos(behaviorDemoPhase + joint.phase)) * intensity;
+        const footX = kneeX + Math.cos(tibiaAngle) * 32;
+        const footY = kneeY + Math.sin(tibiaAngle) * 32;
+        const path = $(`demoLeg${index}`);
+        if (path) path.setAttribute("d", `M${joint.hip[0]} ${joint.hip[1]} L${kneeX.toFixed(1)} ${kneeY.toFixed(1)} L${footX.toFixed(1)} ${footY.toFixed(1)}`);
+      });
+      const bob = behaviorDemoActive ? Math.sin(behaviorDemoPhase * 2) * 1.4 * intensity : 0;
+      const tilt = behaviorDemoActive ? Math.sin(behaviorDemoPhase) * 1.2 * intensity : 0;
+      ui.flyBodyVisual.setAttribute("transform", `translate(0 ${bob.toFixed(2)}) rotate(${tilt.toFixed(2)} 120 82)`);
+    }
+
     function updateBehaviorDemo(dmActive) {
       lastDmActive = Number(dmActive) || 0;
+      if (!lastDmActive) {
+        behaviorDemoActive = false;
+        ui.demoTrack.classList.remove("active");
+        ui.flyBodyDemo.classList.remove("active");
+      }
       ui.demoStatus.textContent = lastDmActive > 0
         ? `Há ${lastDmActive} candidato(s) Dm ativo(s). O corpo real continua desconhecido; a animação usa “pernas” apenas como hipótese visual.`
         : "Nenhum Dm ativo nesta condição; nenhum proxy será animado.";
@@ -623,13 +661,14 @@
       updateBehaviorDemo(lastDmActive);
       ui.demoTrack.classList.remove("active");
       ui.flyBodyDemo.classList.remove("active");
+      behaviorDemoActive = lastDmActive > 0;
       void ui.demoTrack.offsetWidth;
       if (lastDmActive > 0) {
         ui.demoTrack.classList.add("active");
         ui.flyBodyDemo.classList.add("active");
-        ui.demoStatus.textContent = `Proxy visual: ${lastDmActive} Dm ativo(s) → pernas destacadas por hipótese. O FAFB não informa qual parte do corpo real seria ativada.`;
+        ui.demoStatus.textContent = `Locomoção virtual demonstrativa: ${lastDmActive} Dm ativo(s) → pernas articuladas. Mapeamento corporal hipotético, não medido no FAFB.`;
       } else {
-        ui.demoStatus.textContent = "Sem Dm ativo: nenhum proxy visual será animado.";
+        ui.demoStatus.textContent = "Sem Dm ativo: nenhuma locomoção virtual será animada.";
       }
     }
     function clearTopologicalPaths() {
@@ -1245,8 +1284,8 @@
     ui.showPaths.addEventListener("click", () => { if (flywire.lastInputIds.length) showTopologicalPaths(flywire.lastInputIds); else ui.pathInfo.textContent = "Faça uma simulação primeiro para definir a entrada."; });
     ui.clearReport.addEventListener("click", () => { try { localStorage.setItem(REPORT_KEY, "[]"); } catch (_) { /* storage is optional */ } renderCircuitReport(); });
     ui.playDemo.addEventListener("click", playBehaviorDemo);
-    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; if (flywire.loaded) { highlightPersistentFlywireSpikes([]); clearTopologicalPaths(); } else { flywire.flashes.clear(); flywire.persistent.clear(); } ui.demoTrack.classList.remove("active"); ui.flyBodyDemo.classList.remove("active"); ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.flywireActiveDescending.textContent = "—"; updateBehaviorDemo(0); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
-    function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
+    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; behaviorDemoActive = false; if (flywire.loaded) { highlightPersistentFlywireSpikes([]); clearTopologicalPaths(); } else { flywire.flashes.clear(); flywire.persistent.clear(); } ui.demoTrack.classList.remove("active"); ui.flyBodyDemo.classList.remove("active"); ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.flywireActiveDescending.textContent = "—"; updateBehaviorDemo(0); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
+    function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateVirtualFlyBody(now); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
     initThree(); setMode("flywire"); renderCircuitReport(); updateBehaviorDemo(0); checkBackend(); animate();
   </script>
 </body>
