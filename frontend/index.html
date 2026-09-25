@@ -132,6 +132,9 @@
     .graph-help strong { color: var(--cyan); }
     .graph-help ol { margin: 6px 0 0 17px; padding: 0; }
     .graph-help li { margin: 3px 0; }
+    .glossary { margin-top: 9px; }
+    .glossary-content { margin-top: 7px; padding: 8px 9px; border-left: 2px solid var(--yellow); border-radius: 6px; background: #ffe18a0b; }
+    .glossary-content p { margin: 5px 0; }
     #error { margin-top: 10px; color: #ffb1ba; font-size: 12px; }
     @media (max-width: 720px) {
       #controls { top: 10px; left: 10px; width: min(330px, calc(100vw - 20px)); max-height: 48vh; padding: 14px; }
@@ -191,7 +194,19 @@
       </label>
       <button id="showPathsBtn" class="secondary">Mostrar caminhos até Dm</button>
       <div id="flywirePathInfo" class="readout">Nenhum caminho topológico destacado.</div>
-      <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui.</div>
+      <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui. NT significa neurotransmissor; os tipos vêm da previsão do dataset.</div>
+      <details class="glossary">
+        <summary>Glossário: entender os termos</summary>
+        <div class="glossary-content">
+          <p><strong>Neurotransmissor:</strong> substância química usada por um neurônio para influencear outro.</p>
+          <p><strong>GABA:</strong> neurotransmissor geralmente inibitório; no nosso LIF, recebe peso negativo e funciona como um “freio” simplificado.</p>
+          <p><strong>ACH:</strong> acetilcolina; no nosso modelo é tratada como conexão não inibitória.</p>
+          <p><strong>OCT:</strong> octopamina; um modulador neuroquímico. Neste primeiro modelo, também é tratado como não inibitório.</p>
+          <p><strong>syn_count:</strong> quantidade de contatos sinápticos representada por uma aresta agregada; não é automaticamente o peso elétrico.</p>
+          <p><strong>Dm:</strong> prefixo de uma família de tipos celulares descendentes no FAFB; não significa automaticamente “músculo da perna”.</p>
+          <p><strong>LIF:</strong> modelo matemático simplificado que integra corrente e produz spikes.</p>
+        </div>
+      </details>
       <div class="graph-legend">
         <span><i class="legend-dot"></i>neurônio</span>
         <span><i class="legend-dot spike"></i>spike</span>

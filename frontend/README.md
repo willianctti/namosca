@@ -34,7 +34,8 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
   `MeMe` e neurônios sem tipo;
 - `Dm` funciona como controle direto de entrada, não como prova de um
   estímulo sensorial;
-- o botão de limpeza remove os destaques e o gráfico de frames.
+- o botão de limpeza remove os destaques e o gráfico de frames;
+- o painel inclui um glossário de GABA, ACH, OCT, Dm, syn_count e LIF.
 
 A entrada inicial do LIF local é exploratória: ela usa os primeiros
 neurônios de maior grau da sub-rede e ainda não representa um estímulo
@@ -45,6 +46,6 @@ validação comportamental de uma mosca real.
 
 ## Próxima etapa
 
-A sub-rede FAFB v783 já é preparada e carregada pelo backend. O próximo
-passo é adicionar um modo separado neste frontend para exibir neurônios,
-coordenadas, sinapses e spikes individuais do LIF local.
+A sub-rede FAFB v783 já é carregada, os caminhos são destacados e a atividade
+por tipo celular é exibida. O próximo passo é testar ablações e associar
+circuitos descendentes a comportamentos explicitamente demonstrativos.
