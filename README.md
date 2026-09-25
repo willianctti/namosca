@@ -262,7 +262,7 @@ O projeto implementa:
 O NaMosca não afirma que:
 
 - o cérebro completo da mosca está sendo executado localmente;
-- cada neurônio individual está sendo visualizado no frontend;
+- todos os neurônios e conexões do FAFB estão sendo visualizados no frontend;
 - o comportamento visual reproduz fielmente uma mosca biológica;
 - `drive.escape = 1.0` representa diretamente uma variável biológica mensurada;
 - uma única simulação computacional constitui uma reprodução completa do comportamento animal.
@@ -282,7 +282,8 @@ primeira sub-rede gerada contém 800 neurônios e 4.000 conexões do neuropilo
 - arestas e contagens sinápticas do FlyWire.
 
 O JSON gerado está em `data/flywire/me_left_flywire_graph.json` e é ignorado
-pelo Git. O backend já consegue carregá-lo e executar o LIF local. A
+pelo Git. O backend carrega o arquivo, o frontend exibe os pontos e as
+conexões, e o LIF local pode ser executado diretamente no navegador. A
 conversão de `syn_count` para peso e o atraso de 1 ms são hipóteses
 computacionais explícitas, não medidas sinápticas diretas.
 
@@ -411,9 +412,9 @@ Experimentos futuros deverão registrar também:
 - condições iniciais;
 - resultados comportamentais.
 
-O mapa 3D de neurônios e sinapses reais é a próxima etapa. A ingestão local
-já foi preparada e uma primeira sub-rede `ME_L` foi gerada; o guia completo
-está em [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
+O mapa 3D de neurônios e conexões reais já está disponível no modo FlyWire
+local para a primeira sub-rede `ME_L`. O guia de preparação e ingestão está
+em [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
 
 ---
 
@@ -439,8 +440,8 @@ O NaMosca foi pensado como uma plataforma experimental incremental.
 - [x] Mapear root IDs
 - [x] Mapear posições dos somas
 - [x] Mapear conexões e tipos celulares
-- [ ] Visualizar neurônios em 3D
-- [ ] Visualizar sinapses
+- [x] Visualizar neurônios em 3D
+- [x] Visualizar conexões
 - [ ] Explorar sub-redes específicas
 
 ### Fase 3 — Simulação local
@@ -448,7 +449,7 @@ O NaMosca foi pensado como uma plataforma experimental incremental.
 - [x] Implementar simulação LIF local sobre sub-redes reais
 - [x] Executar a primeira sub-rede do connectome
 - [ ] Comparar resultados locais com a API
-- [ ] Instrumentar spikes individualmente no frontend
+- [x] Instrumentar spikes individualmente no frontend
 - [ ] Medir desempenho
 - [ ] Reproduzir circuitos motores específicos
 
@@ -541,8 +542,8 @@ O NaMosca é um projeto experimental.
 Atualmente:
 
 - a interface principal e o Shadow Run ainda usam a infraestrutura da Axobug;
-- a primeira sub-rede FlyWire local já pode ser executada pelo backend LIF, mas ainda não é o modo visual padrão do frontend;
-- a visualização 3D não representa individualmente todos os neurônios;
+- o modo FlyWire local visualiza uma sub-rede real, mas a entrada inicial é exploratória e ainda não representa um estímulo sensorial validado;
+- a visualização 3D usa pontos dos somas e conexões agregadas, não toda a morfologia nem cada sinapse individual;
 - o peso sináptico e o atraso usados na primeira sub-rede são hipóteses computacionais, não medidas biológicas diretas;
 - os sinais `drive` são abstrações fornecidas pelo modelo Axobug;
 - comportamento visual não deve ser interpretado como validação biológica;

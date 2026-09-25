@@ -15,16 +15,21 @@ python3 -m http.server 8080
 
 Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
 
-## Modo experimental
+## Modos
 
-- `food` pode iniciar a caminhada;
-- `loom` controla a resposta de escape;
-- `Shadow Run` executa uma corrida com cinco sombras;
-- o painel de resposta pode ser aberto no canto superior direito;
-- a explicação da simulação pode ser minimizada no canto inferior direito.
+- **FlyWire local** carrega a sub-rede FAFB v783, mostra os pontos dos somas e
+  as conexões, e executa o LIF sem chamar a Axobug;
+- **Axobug comparação** mantém os experimentos de estímulo e o Shadow Run
+  existentes;
+- os spikes do LIF local são destacados em amarelo durante a reprodução dos
+  frames.
 
-A animação representa o comando devolvido pelo modelo; não é uma validação
-comportamental de uma mosca real.
+A entrada inicial do LIF local é exploratória: ela usa os primeiros
+neurônios de maior grau da sub-rede e ainda não representa um estímulo
+sensorial validado.
+
+A animação Axobug representa o comando devolvido pelo modelo; não é uma
+validação comportamental de uma mosca real.
 
 ## Próxima etapa
 

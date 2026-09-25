@@ -285,9 +285,10 @@ pré-processar offline e servir apenas a sub-rede necessária.
 - [x] Colunas de neurônio, posição e conexão inspecionadas
 - [x] Sub-rede pequena escolhida
 - [x] JSON normalizado gerado
-- [ ] `FLYWIRE_DATA_FILE` configurado
+- [x] `FLYWIRE_DATA_FILE` configurado
 - [x] `/api/network?source=flywire` responde
-- [ ] Frontend recebe grafo real
+- [x] Frontend recebe e renderiza o grafo real
 - [x] LIF local conectado ao grafo
-- [ ] Axobug relegado a comparação
+- [x] Spikes destacados no frontend
+- [ ] Axobug completamente substituído no Shadow Run
 - [ ] Comportamento documentado no README e no artigo

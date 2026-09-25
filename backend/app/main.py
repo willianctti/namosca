@@ -252,7 +252,7 @@ def create_app() -> FastAPI:
                 "available": True,
                 "role": "fonte real de simulação e comportamento",
                 "graph_endpoint": False,
-                "note": "Axobug retorna simulação; o grafo 3D real está no TODO FlyWire.",
+                "note": "Axobug retorna simulação/comportamento; o grafo local é servido pelo FlyWire.",
             },
         }
 

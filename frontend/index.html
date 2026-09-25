@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#101a38" />
-  <title>FlyBrainWeb — Respostas reais da Axobug</title>
+  <title>NaMosca — Axobug + FlyWire local</title>
   <style>
     :root {
       color-scheme: dark;
@@ -114,6 +114,18 @@
     #info p + p { margin-top: 8px; }
     #info strong { color: var(--yellow); }
     .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; color: var(--green); background: #83f0b014; font-size: 11px; }
+    .badge.local { color: var(--cyan); background: #65f2ff16; }
+    .badge.remote { color: var(--yellow); background: #ffe18a16; }
+    .mode-note { margin-top: 9px; color: var(--muted); font-size: 11px; }
+    .graph-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin-top: 9px; }
+    .graph-stat { padding: 8px; border: 1px solid #65f2ff2b; border-radius: 8px; background: #65f2ff0b; }
+    .graph-stat small { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
+    .graph-stat strong { display: block; margin-top: 3px; color: var(--cyan); font-size: 15px; }
+    .graph-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 9px; color: var(--muted); font-size: 10px; }
+    .legend-dot { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: var(--cyan); }
+    .legend-dot.spike { background: var(--yellow); }
+    .legend-line { display: inline-block; width: 16px; height: 2px; margin: 0 4px 3px 0; background: #b58cff; }
+    .legend-line.inhibitory { background: #ff7885; }
     #error { margin-top: 10px; color: #ffb1ba; font-size: 12px; }
     @media (max-width: 720px) {
       #controls { top: 10px; left: 10px; width: min(330px, calc(100vw - 20px)); max-height: 48vh; padding: 14px; }
@@ -124,26 +136,55 @@
   </style>
 </head>
 <body>
-  <div id="viewport" aria-label="Animação 3D da mosca"></div>
+  <div id="viewport" aria-label="Visualização 3D da mosca e da sub-rede FlyWire"></div>
 
   <section id="controls" class="panel">
-    <h1>FlyBrainWeb <span>AXOBUG REAL</span></h1>
-    <p class="subtitle">Resposta neural real → comportamento visual</p>
+    <h1>NaMosca <span id="modeBadge" class="badge local">FLYWIRE LOCAL</span></h1>
+    <p class="subtitle">FAFB v783 real + LIF local · Axobug como comparação</p>
 
     <div class="section">
       <h2>Conexão</h2>
       <div class="row"><span class="label">Backend local</span><span id="backendStatus" class="status"><i class="dot loading"></i><span>Verificando…</span></span></div>
-      <div class="row"><span class="label">Fonte</span><span class="badge">Axobug Neuro API</span></div>
-      <div class="row"><span class="label">Modelo</span><span id="model" class="value">—</span></div>
+      <div class="row"><span class="label">Fonte ativa</span><span id="activeSource" class="badge local">FlyWire local</span></div>
+      <label class="field"><span class="label">Modo de experimento</span>
+        <select id="engineMode">
+          <option value="flywire">FlyWire local · LIF sobre grafo real</option>
+          <option value="axobug">Axobug · comparação de comportamento</option>
+        </select>
+      </label>
+      <div class="mode-note" id="modeNote">Carregando a sub-rede FAFB v783 do backend…</div>
     </div>
 
-    <div class="section">
-      <h2>Experimentos reais</h2>
+    <div class="section" id="flywirePanel">
+      <h2>FlyWire local</h2>
+      <div class="buttons">
+        <button id="loadFlywireBtn" class="secondary">Carregar sub-rede real</button>
+        <button id="simulateFlywireBtn">Simular LIF local</button>
+      </div>
+      <div class="graph-stats">
+        <div class="graph-stat"><small>Neurônios</small><strong id="flywireNeurons">—</strong></div>
+        <div class="graph-stat"><small>Conexões</small><strong id="flywireSynapses">—</strong></div>
+        <div class="graph-stat"><small>Dataset</small><strong id="flywireDataset">—</strong></div>
+        <div class="graph-stat"><small>Spikes</small><strong id="flywireSpikes">—</strong></div>
+      </div>
+      <label class="field"><span class="label">Neurônios de entrada exploratórios</span><input id="flywireInputCount" type="number" min="1" max="64" step="1" value="8" /></label>
+      <div class="graph-legend">
+        <span><i class="legend-dot"></i>neurônio</span>
+        <span><i class="legend-dot spike"></i>spike</span>
+        <span><i class="legend-line"></i>excitatória</span>
+        <span><i class="legend-line inhibitory"></i>inibitória</span>
+      </div>
+      <div id="flywireStatus" class="experiment-status">Aguardando a sub-rede real do FlyWire.</div>
+      <div id="flywireFrameChart" class="frame-chart" aria-label="Spikes da simulação LIF local"></div>
+    </div>
+
+    <div class="section" id="axobugExperiments">
+      <h2>Experimentos Axobug · comparação</h2>
       <div class="buttons">
         <button id="foodBtn">Cheiro → andar</button>
         <button id="loomBtn">Objeto → pular</button>
       </div>
-      <label class="field"><span class="label">Estimulo enviado à Axobug</span>
+      <label class="field"><span class="label">Estímulo enviado à Axobug</span>
         <select id="stimulusSelect">
           <option value="sugar">sugar · doce</option>
           <option value="loom">loom · sombra</option>
@@ -161,7 +202,7 @@
       <label class="field"><span class="label">Intensidade do estímulo (0–2)</span><input id="intensity" type="number" min="0" max="2" step="0.1" value="1" /></label>
       <label class="field"><span class="label">Seed</span><input id="seed" type="number" min="0" max="4294967295" step="1" value="42" /></label>
       <button id="runBtn" class="primary">Executar estímulo selecionado</button>
-      <div class="readout">Cada consulta envia <strong>um único estímulo</strong> para a API. A animação é escolhida pela resposta real, não por uma lista fixa.</div>
+      <div class="readout">Cada consulta envia <strong>um único estímulo</strong> para a API Axobug. A animação é escolhida pela resposta real, não por uma lista fixa.</div>
       <div class="shadow-panel">
         <button id="shadowRunBtn" class="secondary">Shadow Run — 5 sombras</button>
         <div class="shadow-stats">
@@ -225,7 +266,8 @@
       <p>Os valores são lidos de <code>brain.drive</code> e <code>brain.channels</code> da resposta real.</p>
       <p><strong>Importante:</strong> a animação é uma visualização do comando do modelo; não é uma prova de que o estímulo produz aquele comportamento na mosca real.</p>
       <p>Use o seletor para tentar <code>sugar</code>, <code>touch</code>, <code>song</code>, <code>pheromone</code>, <code>colour</code>, <code>humid</code>, <code>heat</code>, <code>bitter</code> e o controle <code>none</code>.</p>
-      <p><strong>FlyWire local:</strong> o backend já carrega a sub-rede FAFB v783; o próximo passo é renderizar neurônios, conexões e spikes LIF nesta interface.</p>
+      <p><strong>FlyWire local:</strong> o backend carrega uma sub-rede real do FAFB v783 e o LIF local simula os spikes. Os pontos representam somas; a morfologia completa continua no ZIP.</p>
+      <p><strong>Comparação:</strong> o modo Axobug permanece separado porque a resposta local ainda não está associada a um circuito motor biológico validado.</p>
     </div>
   </details>
 
@@ -243,12 +285,18 @@
       total: $("totalSpikes"), responding: $("responding"), channelWalk: $("channelWalk"),
       channelEscape: $("channelEscape"), driveWalk: $("driveWalk"), driveEscape: $("driveEscape"),
       interpretation: $("interpretation"), meta: $("responseMeta"), channelBars: $("channelBars"), driveBars: $("driveBars"),
-      frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn")
+      frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
+      mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
+      flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"),
+      flywireInputCount: $("flywireInputCount"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
-    let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle;
+    let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
     let behavior = { kind: "idle", started: 0, duration: 0, strength: 0 };
     let shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: 0, token: 0 };
     let lastBrain = null, lastRequest = null, history = [];
+    let currentMode = "flywire";
+    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), playbackToken: 0, frameTimer: null };
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const fixed = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
     const STIMULUS_INFO = {
@@ -273,7 +321,21 @@
         const response = await fetch(`${API_URL}/api/health`, { cache: "no-store" });
         if (!response.ok) throw new Error("health");
         setBackend("Conectado", "ok");
-      } catch (_) { setBackend("Indisponível"); }
+        const providersResponse = await fetch(`${API_URL}/api/providers`, { cache: "no-store" });
+        if (providersResponse.ok) {
+          const providers = await providersResponse.json();
+          if (providers.flywire?.available) {
+            await loadFlywireGraph();
+          } else {
+            ui.modeNote.textContent = "FlyWire ainda não está configurado no backend. O modo Axobug permanece disponível.";
+            setMode("axobug");
+          }
+        }
+      } catch (_) {
+        setBackend("Indisponível");
+        ui.modeNote.textContent = "Backend indisponível. Verifique se o FastAPI está rodando na porta 8000.";
+        setMode("axobug");
+      }
     }
 
     function createFly() {
@@ -304,6 +366,225 @@
       shadowObstacle.position.set(3.2, -1.15, 0); shadowObstacle.visible = false; scene.add(shadowObstacle);
     }
 
+    function setMode(mode) {
+      currentMode = mode === "axobug" ? "axobug" : "flywire";
+      const local = currentMode === "flywire";
+      ui.mode.value = currentMode;
+      ui.modeBadge.textContent = local ? "FLYWIRE LOCAL" : "AXOBUG COMPARISON";
+      ui.modeBadge.className = `badge ${local ? "local" : "remote"}`;
+      ui.activeSource.textContent = local ? "FlyWire local" : "Axobug Neuro API";
+      ui.activeSource.className = `badge ${local ? "local" : "remote"}`;
+      ui.flywirePanel.hidden = !local;
+      ui.axobugExperiments.hidden = local;
+      ui.responsePanel.hidden = local;
+      if (fly) fly.visible = !local;
+      if (flywireGroup) flywireGroup.visible = local && flywire.loaded;
+      if (!local && shadowObstacle) shadowObstacle.visible = false;
+      if (local && shadowRun.active) { shadowRun.active = false; shadowRun.waiting = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; }
+      ui.modeNote.textContent = local
+        ? (flywire.loaded ? "Sub-rede real carregada. Os pontos são somas; os spikes são do LIF local." : "Aguardando uma sub-rede real configurada no backend.")
+        : "Axobug continua sendo a comparação de comportamento; o grafo local permanece disponível.";
+    }
+
+    function disposeObject(object) {
+      object.traverse(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach(material => material.dispose());
+        }
+      });
+    }
+
+    function clearFlywireGraph() {
+      cancelFlywirePlayback();
+      if (flywireGroup) {
+        scene.remove(flywireGroup);
+        disposeObject(flywireGroup);
+      }
+      flywireGroup = null;
+      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), playbackToken: 0, frameTimer: null };
+      ui.flywireNeurons.textContent = "—";
+      ui.flywireSynapses.textContent = "—";
+      ui.flywireDataset.textContent = "—";
+      ui.flywireSpikes.textContent = "—";
+      ui.flywireFrameChart.replaceChildren();
+    }
+
+    function updateFlywireStats(network, result = null) {
+      ui.flywireNeurons.textContent = String(network.neurons.length);
+      ui.flywireSynapses.textContent = String(network.synapses.length);
+      ui.flywireDataset.textContent = network.metadata?.dataset || "FAFB v783";
+      ui.flywireSpikes.textContent = result ? String(result.stats?.total_spikes ?? 0) : "—";
+    }
+
+    function renderFlywireGraph(network) {
+      clearFlywireGraph();
+      const neurons = Array.isArray(network.neurons) ? network.neurons : [];
+      const synapses = Array.isArray(network.synapses) ? network.synapses : [];
+      if (!neurons.length) throw new Error("FlyWire não retornou neurônios");
+      const raw = neurons.map(neuron => [Number(neuron.x) || 0, Number(neuron.y) || 0, Number(neuron.z) || 0]);
+      const mins = [Infinity, Infinity, Infinity];
+      const maxs = [-Infinity, -Infinity, -Infinity];
+      raw.forEach(point => point.forEach((value, index) => { mins[index] = Math.min(mins[index], value); maxs[index] = Math.max(maxs[index], value); }));
+      const center = mins.map((value, index) => (value + maxs[index]) / 2);
+      const span = Math.max(1, ...maxs.map((value, index) => value - mins[index]));
+      const scale = 4.8 / span;
+      const positions = raw.map(point => point.map((value, index) => (value - center[index]) * scale));
+      const flatPositions = positions.flat();
+      const baseColor = new THREE.Color(0x65f2ff);
+      const colors = new Float32Array(neurons.length * 3);
+      for (let index = 0; index < neurons.length; index += 1) {
+        colors[index * 3] = baseColor.r;
+        colors[index * 3 + 1] = baseColor.g;
+        colors[index * 3 + 2] = baseColor.b;
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(flatPositions, 3));
+      geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+      const nodes = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .045, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: .95 }));
+      nodes.frustumCulled = false;
+      const excitatory = [];
+      const inhibitory = [];
+      const nodeIndex = new Map(neurons.map((neuron, index) => [String(neuron.id), index]));
+      synapses.forEach(synapse => {
+        const source = nodeIndex.get(String(synapse.source));
+        const target = nodeIndex.get(String(synapse.target));
+        if (source === undefined || target === undefined) return;
+        const targetArray = synapse.inhibitory ? inhibitory : excitatory;
+        targetArray.push(...positions[source], ...positions[target]);
+      });
+      const group = new THREE.Group();
+      group.position.y = .15;
+      group.add(nodes);
+      if (excitatory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(excitatory, 3)), new THREE.LineBasicMaterial({ color: 0xb58cff, transparent: true, opacity: .18, depthWrite: false })));
+      if (inhibitory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(inhibitory, 3)), new THREE.LineBasicMaterial({ color: 0xff7885, transparent: true, opacity: .22, depthWrite: false })));
+      flywireGroup = group;
+      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), playbackToken: 0, frameTimer: null };
+      scene.add(group);
+      updateFlywireStats(network);
+      setMode(currentMode);
+    }
+
+    async function loadFlywireGraph() {
+      ui.loadFlywire.disabled = true;
+      ui.flywireStatus.textContent = "Carregando a sub-rede real do FlyWire...";
+      try {
+        const response = await fetch(`${API_URL}/api/network?region=optic_lobes&source=flywire&max_neurons=800&max_synapses=4000`, { cache: "no-store" });
+        const network = await response.json();
+        if (!response.ok) throw new Error(network.detail?.error || `HTTP ${response.status}`);
+        renderFlywireGraph(network);
+        ui.flywireStatus.textContent = "Sub-rede carregada. Os IDs, coordenadas e conexões vêm do FAFB v783.";
+        setBackend("FlyWire local", "ok");
+        setMode(currentMode);
+      } catch (error) {
+        ui.flywireStatus.textContent = `Não foi possível carregar o FlyWire: ${error.message}`;
+        setBackend("FlyWire indisponível");
+        if (currentMode === "flywire") setMode("axobug");
+      } finally {
+        ui.loadFlywire.disabled = false;
+      }
+    }
+
+    function cancelFlywirePlayback() {
+      flywire.playbackToken += 1;
+      if (flywire.frameTimer) clearTimeout(flywire.frameTimer);
+      flywire.frameTimer = null;
+    }
+
+    function paintFlywireSpikes(ids, now = performance.now()) {
+      if (!flywire.loaded || !flywire.colors) return;
+      const hot = new THREE.Color(0xffe18a);
+      ids.forEach(id => {
+        const index = flywire.nodeIndex.get(String(id));
+        if (index === undefined) return;
+        flywire.colors[index * 3] = hot.r;
+        flywire.colors[index * 3 + 1] = hot.g;
+        flywire.colors[index * 3 + 2] = hot.b;
+        flywire.flashes.set(String(id), now + 420);
+      });
+      flywire.nodes.geometry.getAttribute("color").needsUpdate = true;
+    }
+
+    function updateFlywireVisuals(now) {
+      if (!flywire.loaded || !flywire.colors) return;
+      const base = new THREE.Color(0x65f2ff);
+      let changed = false;
+      flywire.flashes.forEach((until, id) => {
+        if (until > now) return;
+        const index = flywire.nodeIndex.get(id);
+        if (index !== undefined) {
+          flywire.colors[index * 3] = base.r;
+          flywire.colors[index * 3 + 1] = base.g;
+          flywire.colors[index * 3 + 2] = base.b;
+          changed = true;
+        }
+        flywire.flashes.delete(id);
+      });
+      if (changed) flywire.nodes.geometry.getAttribute("color").needsUpdate = true;
+    }
+
+    function renderFlywireFrames(frames) {
+      ui.flywireFrameChart.replaceChildren();
+      const visible = frames.slice(-80);
+      const maxSpikes = Math.max(1, ...visible.map(frame => Array.isArray(frame.spikes) ? frame.spikes.length : 0));
+      visible.forEach(frame => {
+        const bar = document.createElement("span");
+        const count = Array.isArray(frame.spikes) ? frame.spikes.length : 0;
+        bar.className = "frame-bar";
+        bar.style.height = `${Math.max(3, count / maxSpikes * 100)}%`;
+        bar.title = `t=${frame.t_ms ?? "?"} ms · ${count} spikes`;
+        ui.flywireFrameChart.appendChild(bar);
+      });
+    }
+
+    function playFlywireFrames(frames) {
+      cancelFlywirePlayback();
+      const token = flywire.playbackToken;
+      let index = 0;
+      const tick = () => {
+        if (token !== flywire.playbackToken || !flywire.loaded) return;
+        const frame = frames[index];
+        if (!frame) return;
+        paintFlywireSpikes(Array.isArray(frame.spikes) ? frame.spikes : []);
+        index += 1;
+        if (index < frames.length) flywire.frameTimer = setTimeout(tick, 55);
+      };
+      tick();
+    }
+
+    async function simulateFlywire() {
+      if (!flywire.loaded) await loadFlywireGraph();
+      if (!flywire.loaded) return;
+      cancelFlywirePlayback();
+      const count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, flywire.network.neurons.length));
+      const neuronIds = flywire.network.neurons.slice(0, count).map(neuron => String(neuron.id));
+      ui.simulateFlywire.disabled = true;
+      ui.flywireStatus.textContent = `Executando LIF local com ${count} neurônios de entrada exploratórios...`;
+      setBackend("Simulando FlyWire local...", "loading");
+      try {
+        const response = await fetch(`${API_URL}/api/simulate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+          graph: { region: "optic_lobes", source: "flywire", max_neurons: 800, max_synapses: 4000 },
+          config: { duration_ms: 500, dt_ms: 5, frame_interval_ms: 50 },
+          stimulus: { neuron_ids: neuronIds, intensity: 2, duration_ms: 100 },
+          engine: "lif"
+        }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail?.error || `HTTP ${response.status}`);
+        const frames = Array.isArray(result.frames) ? result.frames : [];
+        updateFlywireStats(flywire.network, result);
+        renderFlywireFrames(frames);
+        playFlywireFrames(frames);
+        ui.flywireStatus.textContent = `LIF local: ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios. A entrada é exploratória, não um estímulo biológico validado.`;
+        setBackend("FlyWire local", "ok");
+      } catch (error) {
+        ui.flywireStatus.textContent = `Falha na simulação local: ${error.message}`;
+        setBackend("Erro no LIF local");
+      } finally {
+        ui.simulateFlywire.disabled = false;
+      }
+    }
+
     function initThree() {
       scene = new THREE.Scene(); scene.background = new THREE.Color(0x101a38); scene.fog = new THREE.FogExp2(0x101a38, .055);
       camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, .01, 100); camera.position.set(4, 2.5, 5);
@@ -316,6 +597,7 @@
     }
 
     function updateFly(now) {
+      if (currentMode === "flywire" && flywire.loaded) return;
       const baseY = -1.1; fly.position.set(0, baseY, 0); fly.rotation.set(0, 0, 0); if (flyProboscis) flyProboscis.visible = false;
       const flap = Math.sin(now * 17) * .18; if (leftWing) leftWing.rotation.z = flap; if (rightWing) rightWing.rotation.z = -flap;
       if (!behavior.kind || behavior.kind === "idle") return;
@@ -405,6 +687,7 @@
     }
 
     async function runExperiment(stimulus) {
+      if (currentMode !== "axobug") { showError("Selecione o modo Axobug para executar uma comparação de comportamento."); return; }
       if (shadowRun.active) { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; }
       showError(""); ui.food.disabled = true; ui.loom.disabled = true; setBackend("Consultando Axobug…", "loading");
       const intensity = clamp(Number(ui.intensity.value) || 0, 0, 2); const seed = Math.max(0, Math.floor(Number(ui.seed.value) || 42));
@@ -419,6 +702,7 @@
     }
 
     async function fetchFullFrames() {
+      if (currentMode !== "axobug") { ui.framesInfo.textContent = "Frames completos são da comparação Axobug."; return; }
       if (!lastRequest) { ui.framesInfo.textContent = "Faça primeiro uma experiência."; return; }
       ui.frames.disabled = true; ui.framesInfo.textContent = "Buscando frames reais...";
       try {
@@ -444,6 +728,7 @@
     }
 
     async function startShadowRun() {
+      if (currentMode !== "axobug") { showError("O Shadow Run ainda usa a comparação Axobug."); return; }
       if (shadowRun.active) return;
       shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: performance.now() / 1000, token: (shadowRun.token || 0) + 1 };
       behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; ui.shadowRun.disabled = true; ui.shadowStatus.textContent = "Enviando food para medir o ritmo..."; updateShadowStats();
@@ -467,7 +752,7 @@
     }
 
     function updateShadowRun(now) {
-      if (!shadowRun.active) return;
+      if (currentMode !== "axobug" || !shadowRun.active) return;
       const delta = Math.min(.05, Math.max(0, now - shadowRun.last)); shadowRun.last = now;
       if (!shadowRun.waiting) shadowRun.phase += delta * (.12 + shadowRun.pace * .10);
       const phase = shadowRun.phase; const flyX = -2.2 + phase * 3.5; const obstacleX = 3.2 - phase * 5.4;
@@ -485,9 +770,12 @@
     ui.shadowRun.addEventListener("click", startShadowRun);
     ui.stimulus.addEventListener("change", () => { ui.status.textContent = `${ui.stimulus.value} selecionado. Clique em executar para consultar a Axobug.`; });
     ui.frames.addEventListener("click", fetchFullFrames);
-    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; ui.status.textContent = "Animação limpa. Escolha um experimento."; });
-    function animate() { requestAnimationFrame(animate); const now = performance.now() / 1000; controls?.update(); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
-    initThree(); checkBackend(); animate();
+    ui.mode.addEventListener("change", () => setMode(ui.mode.value));
+    ui.loadFlywire.addEventListener("click", loadFlywireGraph);
+    ui.simulateFlywire.addEventListener("click", simulateFlywire);
+    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; flywire.flashes.clear(); if (flywire.colors) { const base = new THREE.Color(0x65f2ff); for (let index = 0; index < flywire.colors.length; index += 3) { flywire.colors[index] = base.r; flywire.colors[index + 1] = base.g; flywire.colors[index + 2] = base.b; } flywire.nodes.geometry.getAttribute("color").needsUpdate = true; } ui.flywireFrameChart.replaceChildren(); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
+    function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
+    initThree(); setMode("flywire"); checkBackend(); animate();
   </script>
 </body>
 </html>
