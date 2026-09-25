@@ -198,6 +198,10 @@
       <button id="showPathsBtn" class="secondary">Mostrar caminhos até Dm</button>
       <div id="flywirePathInfo" class="readout">Nenhum caminho topológico destacado.</div>
       <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui. NT significa neurotransmissor; os tipos vêm da previsão do dataset.</div>
+      <label class="field"><span class="label">Testar um nó do caminho</span>
+        <select id="pathNodeSelect"><option value="">Faça uma simulação primeiro</option></select>
+      </label>
+      <button id="simulatePathNodeBtn" class="secondary">Simular a partir do nó</button>
       <details class="glossary">
         <summary>Glossário: entender os termos</summary>
         <div class="glossary-content">
@@ -224,7 +228,7 @@
           <li>Escolha uma população e clique em <b>Simular LIF local</b>; compare depois quantos candidatos Dm ficam ativos.</li>
           <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
           <li><b>Dm alcançáveis</b> é uma medida da topologia; não significa que o spike chegou a eles.</li>
-          <li>Ative a ablação para remover o efeito inibitório e compare com o mesmo grupo sem a caixa marcada.</li>
+          <li>Use <b>Testar um nó do caminho</b> para descobrir em qual ponto a propagação começa a falhar.</li>
         </ol>
       </div>
       <div id="flywireStatus" class="experiment-status">Aguardando a sub-rede real do FlyWire.</div>
@@ -341,7 +345,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -494,6 +498,11 @@
       flywire.pathNodeOverlay = null;
       ui.pathInfo.textContent = "Nenhum caminho topológico destacado.";
       ui.pathDetails.textContent = "Os detalhes das conexões aparecerão aqui.";
+      ui.pathNode.replaceChildren();
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = "Faça uma simulação primeiro";
+      ui.pathNode.appendChild(emptyOption);
     }
 
     function findTopologicalPaths(startIds, maxPaths = 3) {
@@ -586,6 +595,15 @@
         return index === undefined ? id : String(flywire.network.neurons[index].cell_type || id);
       });
       ui.pathInfo.textContent = `${paths.length} caminho(s) destacado(s). Primeiro: ${first.distance} sinapses · ${firstLabels.join(" → ")}`;
+      ui.pathNode.replaceChildren();
+      first.nodes.forEach((id, index) => {
+        const nodeIndex = flywire.nodeIndex.get(id);
+        const label = nodeIndex === undefined ? id : String(flywire.network.neurons[nodeIndex].cell_type || id);
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = `${index + 1}. ${label}`;
+        ui.pathNode.appendChild(option);
+      });
       console.info("[FlyWire] topological paths", { count: paths.length, firstPath: firstLabels, distance: first.distance });
     }
 
@@ -804,27 +822,37 @@
       tick();
     }
 
-    async function simulateFlywire() {
+    async function simulateFlywire(forcedInputIds = null, forcedLabel = null) {
       if (!flywire.loaded) await loadFlywireGraph();
       if (!flywire.loaded) return;
       cancelFlywirePlayback();
       highlightPersistentFlywireSpikes([]);
-      const inputGroup = ui.flywireInputGroup.value;
-      const groupCandidates = inputGroup === "top"
-        ? flywire.network.neurons
-        : inputGroup === "untyped"
-          ? flywire.network.neurons.filter(neuron => !neuron.cell_type)
-          : flywire.network.neurons.filter(neuron => String(neuron.cell_type || "").toLowerCase().startsWith(inputGroup.toLowerCase()));
-      if (!groupCandidates.length) {
-        ui.flywireStatus.textContent = `Nenhum neurônio encontrado para o grupo ${inputGroup}.`;
-        return;
+      let inputGroup = ui.flywireInputGroup.value;
+      let neuronIds;
+      let groupLabel;
+      let count;
+      if (Array.isArray(forcedInputIds) && forcedInputIds.length) {
+        inputGroup = "path_node";
+        neuronIds = forcedInputIds.map(String);
+        groupLabel = forcedLabel || "nó do caminho";
+        count = neuronIds.length;
+      } else {
+        const groupCandidates = inputGroup === "top"
+          ? flywire.network.neurons
+          : inputGroup === "untyped"
+            ? flywire.network.neurons.filter(neuron => !neuron.cell_type)
+            : flywire.network.neurons.filter(neuron => String(neuron.cell_type || "").toLowerCase().startsWith(inputGroup.toLowerCase()));
+        if (!groupCandidates.length) {
+          ui.flywireStatus.textContent = `Nenhum neurônio encontrado para o grupo ${inputGroup}.`;
+          return;
+        }
+        count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, groupCandidates.length));
+        neuronIds = groupCandidates.slice(0, count).map(neuron => String(neuron.id));
+        groupLabel = ui.flywireInputGroup.options[ui.flywireInputGroup.selectedIndex].textContent;
       }
-      const count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, groupCandidates.length));
-      const neuronIds = groupCandidates.slice(0, count).map(neuron => String(neuron.id));
       flywire.lastInputIds = neuronIds;
       showTopologicalPaths(neuronIds);
       const reachability = analyzeDmReachability(neuronIds);
-      const groupLabel = ui.flywireInputGroup.options[ui.flywireInputGroup.selectedIndex].textContent;
       const ablationLabel = ui.ablateInhibitory.checked ? "com inibição removida" : "normal";
       ui.simulateFlywire.disabled = true;
       ui.flywireStatus.textContent = `Executando LIF local (${ablationLabel}) com ${count} neurônios de ${groupLabel}; ${reachability.reachable} Dm topologicamente alcançáveis...`;
@@ -1044,7 +1072,14 @@
     ui.frames.addEventListener("click", fetchFullFrames);
     ui.mode.addEventListener("change", () => setMode(ui.mode.value));
     ui.loadFlywire.addEventListener("click", loadFlywireGraph);
-    ui.simulateFlywire.addEventListener("click", simulateFlywire);
+    ui.simulateFlywire.addEventListener("click", () => simulateFlywire());
+    ui.simulatePathNode.addEventListener("click", () => {
+      const rootId = ui.pathNode.value;
+      if (!rootId) { ui.flywireStatus.textContent = "Faça uma simulação primeiro para gerar um caminho."; return; }
+      const index = flywire.nodeIndex.get(rootId);
+      const label = index === undefined ? rootId : String(flywire.network.neurons[index].cell_type || rootId);
+      void simulateFlywire([rootId], `nó ${label}`);
+    });
     ui.showPaths.addEventListener("click", () => { if (flywire.lastInputIds.length) showTopologicalPaths(flywire.lastInputIds); else ui.pathInfo.textContent = "Faça uma simulação primeiro para definir a entrada."; });
     ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; if (flywire.loaded) { highlightPersistentFlywireSpikes([]); clearTopologicalPaths(); } else { flywire.flashes.clear(); flywire.persistent.clear(); } ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.flywireActiveDescending.textContent = "—"; ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
     function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }

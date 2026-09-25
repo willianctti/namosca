@@ -30,6 +30,8 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
 - o botão `Mostrar caminhos até Dm` destaca até três caminhos curtos no grafo;
 - cada caminho mostra número de sinapses, edges inibitórios, faixa de
   `syn_count` e neurotransmissores associados;
+- o seletor de nó permite estimular um ponto do caminho para localizar um
+  possível gargalo de propagação;
 - o seletor de população permite comparar entradas `Pm`, `LMa`, `Tm`, `Dm`,
   `MeMe` e neurônios sem tipo;
 - `Dm` funciona como controle direto de entrada, não como prova de um
