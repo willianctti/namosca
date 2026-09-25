@@ -173,6 +173,8 @@
         <div class="graph-stat"><small>Spikes</small><strong id="flywireSpikes">—</strong></div>
         <div class="graph-stat"><small>Candidatos Dm</small><strong id="flywireDescending">—</strong></div>
         <div class="graph-stat"><small>Dm ativos</small><strong id="flywireActiveDescending">—</strong></div>
+        <div class="graph-stat"><small>Dm alcançáveis</small><strong id="flywireReachableDescending">—</strong></div>
+        <div class="graph-stat"><small>Menor caminho</small><strong id="flywireShortestPath">—</strong></div>
       </div>
       <label class="field"><span class="label">Neurônios de entrada exploratórios</span><input id="flywireInputCount" type="number" min="1" max="64" step="1" value="8" /></label>
       <label class="field"><span class="label">População de entrada</span>
@@ -198,7 +200,7 @@
         <ol>
           <li>Escolha uma população e clique em <b>Simular LIF local</b>; compare depois quantos candidatos Dm ficam ativos.</li>
           <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
-          <li>Pontos amarelos indicam spikes; laranja marca candidatos Dm/descendentes do FAFB.</li>
+          <li><b>Dm alcançáveis</b> é uma medida da topologia; não significa que o spike chegou a eles.</li>
           <li>Compare <b>top</b>, <b>LMa</b> e <b>Dm</b>; Dm é um controle direto, não um estímulo sensorial.</li>
         </ol>
       </div>
@@ -316,7 +318,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -438,6 +440,8 @@
       ui.flywireSpikes.textContent = "—";
       ui.flywireDescending.textContent = "—";
       ui.flywireActiveDescending.textContent = "—";
+      ui.flywireReachableDescending.textContent = "—";
+      ui.flywireShortestPath.textContent = "—";
       ui.flywireFrameChart.replaceChildren();
     }
 
@@ -451,6 +455,35 @@
       ui.flywireSpikes.textContent = result ? String(result.stats?.total_spikes ?? 0) : "—";
       ui.flywireDescending.textContent = String(descending.length);
       ui.flywireActiveDescending.textContent = result ? String(activeDescending.length) : "—";
+    }
+
+    function analyzeDmReachability(startIds) {
+      const adjacency = new Map();
+      flywire.network.synapses.forEach(synapse => {
+        if (!adjacency.has(synapse.source)) adjacency.set(synapse.source, []);
+        adjacency.get(synapse.source).push(synapse.target);
+      });
+      const dmIds = new Set(flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).map(neuron => String(neuron.id)));
+      const queue = startIds.map(id => ({ id: String(id), distance: 0 }));
+      const visited = new Set(startIds.map(String));
+      let reachable = 0;
+      let shortest = null;
+      while (queue.length) {
+        const current = queue.shift();
+        if (dmIds.has(current.id)) {
+          reachable += 1;
+          if (shortest === null || current.distance < shortest) shortest = current.distance;
+        }
+        (adjacency.get(current.id) || []).forEach(nextId => {
+          const id = String(nextId);
+          if (visited.has(id)) return;
+          visited.add(id);
+          queue.push({ id, distance: current.distance + 1 });
+        });
+      }
+      ui.flywireReachableDescending.textContent = String(reachable);
+      ui.flywireShortestPath.textContent = shortest === null ? "—" : `${shortest} sinapses`;
+      return { reachable, shortest };
     }
 
     function renderFlywireGraph(network) {
@@ -656,9 +689,10 @@
       }
       const count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, groupCandidates.length));
       const neuronIds = groupCandidates.slice(0, count).map(neuron => String(neuron.id));
+      const reachability = analyzeDmReachability(neuronIds);
       const groupLabel = ui.flywireInputGroup.options[ui.flywireInputGroup.selectedIndex].textContent;
       ui.simulateFlywire.disabled = true;
-      ui.flywireStatus.textContent = `Executando LIF local com ${count} neurônios de ${groupLabel}...`;
+      ui.flywireStatus.textContent = `Executando LIF local com ${count} neurônios de ${groupLabel}; ${reachability.reachable} Dm topologicamente alcançáveis...`;
       setBackend("Simulando FlyWire local...", "loading");
       try {
         const response = await fetch(`${API_URL}/api/simulate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
@@ -675,8 +709,8 @@
         updateFlywireStats(flywire.network, result, spikeIds);
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
-        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent });
-        ui.flywireStatus.textContent = `LIF local (${groupLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos foram destacados, incluindo ${ui.flywireActiveDescending.textContent} candidatos Dm. Entrada exploratória, não estímulo biológico validado.`;
+        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
+        ui.flywireStatus.textContent = `LIF local (${groupLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos destacados, ${ui.flywireActiveDescending.textContent} Dm ativos e ${reachability.reachable} Dm alcançáveis na topologia. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
       } catch (error) {
         console.error("[FlyWire] simulation failed", error);
