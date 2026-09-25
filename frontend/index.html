@@ -106,6 +106,9 @@
     .shadow-stat small { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; }
     .shadow-stat strong { display: block; margin-top: 3px; color: var(--yellow); font-size: 16px; }
     details { margin-top: 10px; color: var(--muted); font-size: 11px; }
+    .advanced-panel { border: 1px solid #7ea4ff2b; border-radius: 9px; padding: 9px 10px; background: #ffffff06; }
+    .advanced-panel > summary { color: var(--muted); font-weight: 700; }
+    .advanced-content { margin-top: 8px; }
     summary { cursor: pointer; color: var(--blue); }
     pre { max-height: 220px; overflow: auto; padding: 9px; border-radius: 7px; color: #b9d6ff; background: #050817; font: 10px/1.45 ui-monospace, monospace; white-space: pre-wrap; }
     .history-item { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #7ea4ff1c; color: var(--muted); font-size: 11px; }
@@ -227,13 +230,18 @@
       </label>
       <label class="field check-field"><input id="ablateInhibitory" type="checkbox" /> <span>Remover efeito das conexões inibitórias (ablação)</span></label>
       <label class="field check-field"><input id="forcePathExcitatory" type="checkbox" /> <span>Forçar primeira aresta do caminho como excitatória (contrafactual)</span></label>
-      <button id="showPathsBtn" class="secondary">Mostrar caminhos até Dm</button>
-      <div id="flywirePathInfo" class="readout">Nenhum caminho topológico destacado.</div>
-      <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui. NT significa neurotransmissor; os tipos vêm da previsão do dataset.</div>
-      <label class="field"><span class="label">Testar um nó do caminho</span>
-        <select id="pathNodeSelect"><option value="">Faça uma simulação primeiro</option></select>
-      </label>
-      <button id="simulatePathNodeBtn" class="secondary">Simular a partir do nó</button>
+      <details class="advanced-panel">
+        <summary>Mais opções: caminhos e nó isolado</summary>
+        <div class="advanced-content">
+          <button id="showPathsBtn" class="secondary">Mostrar caminhos até Dm</button>
+          <div id="flywirePathInfo" class="readout">Nenhum caminho topológico destacado.</div>
+          <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui. NT significa neurotransmissor; os tipos vêm da previsão do dataset.</div>
+          <label class="field"><span class="label">Testar um nó do caminho</span>
+            <select id="pathNodeSelect"><option value="">Faça uma simulação primeiro</option></select>
+          </label>
+          <button id="simulatePathNodeBtn" class="secondary">Simular a partir do nó</button>
+        </div>
+      </details>
       <details class="glossary">
         <summary>Glossário: entender os termos</summary>
         <div class="glossary-content">
