@@ -1072,6 +1072,11 @@
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
         console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
+        const motorOutput = result.motor_output || { available: false, active_dm_count: 0, systems: {} };
+        if (motorOutput.available && motorOutput.active_dm_count > 0) {
+          const systemText = Object.entries(motorOutput.systems || {}).map(([name, value]) => `${name}: ${value}`).join(" · ");
+          ui.demoStatus.textContent = `Rota Dm → DN → MN atingida: ${motorOutput.active_dm_count} tipo(s) Dm. ${systemText || "sem sistema classificado"}. Pesos são conectômicos, não força muscular.`;
+        }
         updateBehaviorDemo(Number(ui.flywireActiveDescending.textContent) || 0);
         recordCircuitExperiment({ inputGroup, groupLabel, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, result, reachability });
         if (lastDmActive > 0) playBehaviorDemo();

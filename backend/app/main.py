@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Literal
 
 import httpx
@@ -10,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.motor_output import load_dm_routes, summarize_motor_output
 from app.config import Settings
 from app.legacy import LegacyRuntime
 from app.providers.axobug import AxobugClient, AxobugError
@@ -65,6 +67,8 @@ async def lifespan(app: FastAPI):
         max_graph_synapses=settings.max_graph_synapses,
     )
     app.state.simulations = SimulationService(axobug)
+    project_root = Path(__file__).resolve().parents[2]
+    app.state.dm_routes = load_dm_routes(project_root / "data" / "flywire" / "dm_dn_mn_routes.json")
     # One optional compatibility runtime for the original single-file demo
     # endpoints. The primary WebSocket still creates isolated sessions.
     app.state.legacy_runtime = None
@@ -304,7 +308,10 @@ def create_app() -> FastAPI:
     async def simulate(request: Request, payload: SimulationRequest) -> dict[str, Any]:
         network = await _network_for_request(request, payload.graph)
         service: SimulationService = request.app.state.simulations
-        return (await service.run(network, payload)).model_dump(mode="json")
+        result = await service.run(network, payload)
+        response = result.model_dump(mode="json")
+        response["motor_output"] = summarize_motor_output(network, result.frames, request.app.state.dm_routes)
+        return response
 
     @app.websocket("/ws/simulation")
     @app.websocket("/ws/simulate")
