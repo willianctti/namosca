@@ -25,6 +25,10 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
   frames e permanecem visíveis até a limpeza da cena;
 - candidatos `Dm`/descendentes são marcados em laranja e a interface mostra
   quantos deles receberam spike;
+- o seletor de população permite comparar entradas `Pm`, `LMa`, `Tm`, `Dm`,
+  `MeMe` e neurônios sem tipo;
+- `Dm` funciona como controle direto de entrada, não como prova de um
+  estímulo sensorial;
 - o botão de limpeza remove os destaques e o gráfico de frames.
 
 A entrada inicial do LIF local é exploratória: ela usa os primeiros

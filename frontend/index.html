@@ -175,6 +175,17 @@
         <div class="graph-stat"><small>Dm ativos</small><strong id="flywireActiveDescending">—</strong></div>
       </div>
       <label class="field"><span class="label">Neurônios de entrada exploratórios</span><input id="flywireInputCount" type="number" min="1" max="64" step="1" value="8" /></label>
+      <label class="field"><span class="label">População de entrada</span>
+        <select id="flywireInputGroup">
+          <option value="top">Maior grau da sub-rede</option>
+          <option value="Pm">Pm · candidatos visuais</option>
+          <option value="LMa">LMa · candidatos visuais</option>
+          <option value="Tm">Tm · candidatos visuais</option>
+          <option value="Dm">Dm · descendentes</option>
+          <option value="MeMe">MeMe · locais</option>
+          <option value="untyped">Sem tipo celular (se houver)</option>
+        </select>
+      </label>
       <div class="graph-legend">
         <span><i class="legend-dot"></i>neurônio</span>
         <span><i class="legend-dot spike"></i>spike</span>
@@ -185,10 +196,10 @@
       <div class="graph-help">
         <strong>Como usar esta primeira versão</strong>
         <ol>
-          <li>Clique em <b>Simular LIF local</b> para injetar corrente em alguns pontos.</li>
+          <li>Escolha uma população e clique em <b>Simular LIF local</b>; compare depois quantos candidatos Dm ficam ativos.</li>
           <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
           <li>Pontos amarelos indicam spikes; laranja marca candidatos Dm/descendentes do FAFB.</li>
-          <li>Use <b>Axobug · comparação</b> para ver a animação comportamental antiga.</li>
+          <li>Compare <b>top</b>, <b>LMa</b> e <b>Dm</b>; Dm é um controle direto, não um estímulo sensorial.</li>
         </ol>
       </div>
       <div id="flywireStatus" class="experiment-status">Aguardando a sub-rede real do FlyWire.</div>
@@ -306,7 +317,7 @@
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
       flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"),
-      flywireInputCount: $("flywireInputCount"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
+      flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
     let behavior = { kind: "idle", started: 0, duration: 0, strength: 0 };
@@ -633,10 +644,21 @@
       if (!flywire.loaded) return;
       cancelFlywirePlayback();
       highlightPersistentFlywireSpikes([]);
-      const count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, flywire.network.neurons.length));
-      const neuronIds = flywire.network.neurons.slice(0, count).map(neuron => String(neuron.id));
+      const inputGroup = ui.flywireInputGroup.value;
+      const groupCandidates = inputGroup === "top"
+        ? flywire.network.neurons
+        : inputGroup === "untyped"
+          ? flywire.network.neurons.filter(neuron => !neuron.cell_type)
+          : flywire.network.neurons.filter(neuron => String(neuron.cell_type || "").toLowerCase().startsWith(inputGroup.toLowerCase()));
+      if (!groupCandidates.length) {
+        ui.flywireStatus.textContent = `Nenhum neurônio encontrado para o grupo ${inputGroup}.`;
+        return;
+      }
+      const count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, groupCandidates.length));
+      const neuronIds = groupCandidates.slice(0, count).map(neuron => String(neuron.id));
+      const groupLabel = ui.flywireInputGroup.options[ui.flywireInputGroup.selectedIndex].textContent;
       ui.simulateFlywire.disabled = true;
-      ui.flywireStatus.textContent = `Executando LIF local com ${count} neurônios de entrada exploratórios...`;
+      ui.flywireStatus.textContent = `Executando LIF local com ${count} neurônios de ${groupLabel}...`;
       setBackend("Simulando FlyWire local...", "loading");
       try {
         const response = await fetch(`${API_URL}/api/simulate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
@@ -653,8 +675,8 @@
         updateFlywireStats(flywire.network, result, spikeIds);
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
-        console.info("[FlyWire] LIF simulation", result.stats, { inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent });
-        ui.flywireStatus.textContent = `LIF local: ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos foram destacados, incluindo ${ui.flywireActiveDescending.textContent} candidatos Dm. Entrada exploratória, não estímulo biológico validado.`;
+        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent });
+        ui.flywireStatus.textContent = `LIF local (${groupLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos foram destacados, incluindo ${ui.flywireActiveDescending.textContent} candidatos Dm. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
       } catch (error) {
         console.error("[FlyWire] simulation failed", error);
