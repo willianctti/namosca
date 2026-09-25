@@ -174,6 +174,14 @@ class SimulationConfig(StrictModel):
         return value
 
 
+class ExcitatoryEdgeOverride(StrictModel):
+    """Counterfactual edge sign override for an exploratory LIF run."""
+
+    source: str
+    target: str
+    weight: float | None = Field(default=None, gt=0.0, le=100.0)
+
+
 class SimulationRequest(StrictModel):
     """HTTP simulation request."""
 
@@ -183,6 +191,7 @@ class SimulationRequest(StrictModel):
     engine: Literal["lif", "axobug"] = "lif"
     include_voltage: bool = False
     ablate_inhibitory: bool = False
+    excitatory_edge_overrides: list[ExcitatoryEdgeOverride] = Field(default_factory=list, max_length=32)
 
 
 class SpikeFrame(StrictModel):

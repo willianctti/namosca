@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from app.schemas import GraphQuery, Network, Neuron, SimulationConfig, SimulationRequest, Stimulus, Synapse
+from app.schemas import ExcitatoryEdgeOverride, GraphQuery, Network, Neuron, SimulationConfig, SimulationRequest, Stimulus, Synapse
 from app.simulation import LIFSimulator, run_local
 
 
@@ -60,6 +60,30 @@ async def test_inhibitory_ablation_releases_a_competing_excitatory_path() -> Non
     assert result.metadata["ablate_inhibitory"] is True
     assert result.stats.responding_neurons == 3
     assert result.stats.total_spikes >= 3
+
+
+@pytest.mark.asyncio
+async def test_excitatory_edge_override_changes_only_the_selected_edge() -> None:
+    graph = Network(
+        region="visual",
+        source="test-fixture",
+        coordinate_space="test",
+        units="normalized",
+        neurons=[
+            Neuron(id="a", label="a", region="visual", x=0, y=0, z=0),
+            Neuron(id="b", label="b", region="visual", x=1, y=0, z=0),
+        ],
+        synapses=[Synapse(source="a", target="b", weight=4.0, delay_ms=5.0, inhibitory=True)],
+    )
+    request = SimulationRequest(
+        graph=GraphQuery(region="visual"),
+        config=SimulationConfig(dt_ms=5, duration_ms=25, threshold=1.0, tau_ms=20),
+        stimulus=Stimulus(neuron_ids=["a"], intensity=2.0, duration_ms=10),
+        excitatory_edge_overrides=[ExcitatoryEdgeOverride(source="a", target="b", weight=4.0)],
+    )
+    result = await run_local(graph, request)
+    assert result.metadata["excitatory_edge_overrides"][0]["source"] == "a"
+    assert result.stats.responding_neurons == 2
 
 
 def test_no_mock_graph_is_served_when_flywire_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:

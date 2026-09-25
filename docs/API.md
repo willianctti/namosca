@@ -135,7 +135,8 @@ curl -X POST http://localhost:8000/api/simulate \
       "duration_ms": 20
     },
     "engine": "lif",
-    "ablate_inhibitory": false
+    "ablate_inhibitory": false,
+    "excitatory_edge_overrides": []
   }'
 ```
 

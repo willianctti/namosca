@@ -255,17 +255,30 @@ def _run_local_sync(
 
     config = request.config
     simulation_network = network
-    if request.ablate_inhibitory:
-        simulation_network = network.model_copy(
-            update={
-                "synapses": [
-                    synapse.model_copy(update={"inhibitory": False, "weight": 0.0})
-                    if synapse.inhibitory
-                    else synapse
-                    for synapse in network.synapses
-                ]
-            }
-        )
+    overrides = {
+        (override.source, override.target): override
+        for override in request.excitatory_edge_overrides
+    }
+    if request.ablate_inhibitory or overrides:
+        adjusted_synapses = []
+        for synapse in network.synapses:
+            key = (synapse.source, synapse.target)
+            if request.ablate_inhibitory and synapse.inhibitory:
+                adjusted_synapses.append(synapse.model_copy(update={"inhibitory": False, "weight": 0.0}))
+                continue
+            override = overrides.get(key)
+            if override is not None:
+                adjusted_synapses.append(
+                    synapse.model_copy(
+                        update={
+                            "inhibitory": False,
+                            "weight": override.weight if override.weight is not None else max(1.0, synapse.weight),
+                        }
+                    )
+                )
+                continue
+            adjusted_synapses.append(synapse)
+        simulation_network = network.model_copy(update={"synapses": adjusted_synapses})
     simulator = LIFSimulator(simulation_network, config)
     stimulus = simulator.stimulus_vector(request.stimulus, region=network.region)
     zero = np.zeros(simulator.neuron_count, dtype=np.float32)
@@ -306,6 +319,7 @@ def _run_local_sync(
         "ring_buffer_slots": simulator._ring_size,
         "input_neuron_count": int(np.count_nonzero(stimulus)),
         "ablate_inhibitory": request.ablate_inhibitory,
+        "excitatory_edge_overrides": [override.model_dump() for override in request.excitatory_edge_overrides],
     }
     return frames, stats, metadata
 

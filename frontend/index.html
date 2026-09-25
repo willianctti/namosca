@@ -195,6 +195,7 @@
         </select>
       </label>
       <label class="field check-field"><input id="ablateInhibitory" type="checkbox" /> <span>Remover efeito das conexões inibitórias (ablação)</span></label>
+      <label class="field check-field"><input id="forcePathExcitatory" type="checkbox" /> <span>Forçar primeira aresta do caminho como excitatória (contrafactual)</span></label>
       <button id="showPathsBtn" class="secondary">Mostrar caminhos até Dm</button>
       <div id="flywirePathInfo" class="readout">Nenhum caminho topológico destacado.</div>
       <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui. NT significa neurotransmissor; os tipos vêm da previsão do dataset.</div>
@@ -228,7 +229,7 @@
           <li>Escolha uma população e clique em <b>Simular LIF local</b>; compare depois quantos candidatos Dm ficam ativos.</li>
           <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
           <li><b>Dm alcançáveis</b> é uma medida da topologia; não significa que o spike chegou a eles.</li>
-          <li>Use <b>Testar um nó do caminho</b> para descobrir em qual ponto a propagação começa a falhar.</li>
+          <li>Use a contrafactual para forçar somente a primeira aresta do caminho e testar o gargalo.</li>
         </ol>
       </div>
       <div id="flywireStatus" class="experiment-status">Aguardando a sub-rede real do FlyWire.</div>
@@ -345,7 +346,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -353,7 +354,7 @@
     let shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: 0, token: 0 };
     let lastBrain = null, lastRequest = null, history = [];
     let currentMode = "flywire";
-    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, pathOverlay: null, pathNodeOverlay: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
+    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, pathOverlay: null, pathNodeOverlay: null, overrideEdge: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const fixed = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
     const STIMULUS_INFO = {
@@ -461,7 +462,7 @@
         disposeObject(flywireGroup);
       }
       flywireGroup = null;
-      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, pathOverlay: null, pathNodeOverlay: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
+      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, pathOverlay: null, pathNodeOverlay: null, overrideEdge: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
       ui.flywireNeurons.textContent = "—";
       ui.flywireSynapses.textContent = "—";
       ui.flywireDataset.textContent = "—";
@@ -604,6 +605,7 @@
         return index === undefined ? id : String(flywire.network.neurons[index].cell_type || id);
       });
       ui.pathInfo.textContent = `${paths.length} caminho(s) destacado(s). Primeiro: ${first.distance} sinapses · ${firstLabels.join(" → ")}`;
+      flywire.overrideEdge = first.edges[0] ? { source: first.edges[0].source, target: first.edges[0].target } : null;
       ui.pathNode.replaceChildren();
       first.nodes.forEach((id, index) => {
         const nodeIndex = flywire.nodeIndex.get(id);
@@ -696,7 +698,7 @@
       if (excitatory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(excitatory, 3)), new THREE.LineBasicMaterial({ color: 0xb58cff, transparent: true, opacity: .18, depthWrite: false })));
       if (inhibitory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(inhibitory, 3)), new THREE.LineBasicMaterial({ color: 0xff7885, transparent: true, opacity: .22, depthWrite: false })));
       flywireGroup = group;
-      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay, pathOverlay: null, pathNodeOverlay: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
+      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay, pathOverlay: null, pathNodeOverlay: null, overrideEdge: null, lastInputIds: [], playbackToken: 0, frameTimer: null };
       scene.add(group);
       updateFlywireStats(network);
       setMode(currentMode);
@@ -863,8 +865,9 @@
       showTopologicalPaths(neuronIds);
       const reachability = analyzeDmReachability(neuronIds);
       const ablationLabel = ui.ablateInhibitory.checked ? "com inibição removida" : "normal";
+      const counterfactualLabel = ui.forcePathExcitatory.checked ? ", primeira aresta forçada como excitatória" : "";
       ui.simulateFlywire.disabled = true;
-      ui.flywireStatus.textContent = `Executando LIF local (${ablationLabel}) com ${count} neurônios de ${groupLabel}; ${reachability.reachable} Dm topologicamente alcançáveis...`;
+      ui.flywireStatus.textContent = `Executando LIF local (${ablationLabel}${counterfactualLabel}) com ${count} neurônios de ${groupLabel}; ${reachability.reachable} Dm topologicamente alcançáveis...`;
       setBackend("Simulando FlyWire local...", "loading");
       try {
         const response = await fetch(`${API_URL}/api/simulate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
@@ -872,7 +875,8 @@
           config: { duration_ms: 500, dt_ms: 5, frame_interval_ms: 50 },
           stimulus: { neuron_ids: neuronIds, intensity: 2, duration_ms: 100 },
           engine: "lif",
-          ablate_inhibitory: ui.ablateInhibitory.checked
+          ablate_inhibitory: ui.ablateInhibitory.checked,
+          excitatory_edge_overrides: ui.forcePathExcitatory.checked && flywire.overrideEdge ? [flywire.overrideEdge] : []
         }) });
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail?.error || `HTTP ${response.status}`);
@@ -882,8 +886,8 @@
         updateFlywireStats(flywire.network, result, spikeIds);
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
-        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, ablateInhibitory: ui.ablateInhibitory.checked, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
-        ui.flywireStatus.textContent = `LIF local (${groupLabel}, ${ablationLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos destacados, ${ui.flywireActiveDescending.textContent} Dm ativos e ${reachability.reachable} Dm alcançáveis na topologia. Entrada exploratória, não estímulo biológico validado.`;
+        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
+        ui.flywireStatus.textContent = `LIF local (${groupLabel}, ${ablationLabel}${counterfactualLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos destacados, ${ui.flywireActiveDescending.textContent} Dm ativos e ${reachability.reachable} Dm alcançáveis na topologia. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
       } catch (error) {
         console.error("[FlyWire] simulation failed", error);
