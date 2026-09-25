@@ -257,7 +257,7 @@
     <div class="section" id="localAnalysis">
       <div class="report-panel">
         <div class="report-heading"><h2>Relatório do circuito</h2><button id="clearReportBtn" class="secondary">Limpar</button></div>
-        <div class="report-note">Comparação local das condições executadas nesta sub-rede. O relatório fica no navegador.</div>
+        <div class="report-note">Referência congelada + novas execuções desta sub-rede. O relatório fica no navegador.</div>
         <div id="reportEmpty" class="report-empty">Nenhuma condição registrada ainda.</div>
         <table id="reportTable" class="report-table" hidden>
           <thead><tr><th>Condição</th><th>Spikes</th><th>Ativos</th><th>Dm ativos</th><th>Dm alcançáveis</th></tr></thead>
@@ -375,6 +375,13 @@
     const local = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.protocol === "file:";
     const API_URL = (configuredApi || (local ? "http://localhost:8000" : location.origin)).replace(/\/$/, "");
     const REPORT_KEY = "namosca-flywire-circuit-report-v1";
+    const REFERENCE_REPORT = [
+      { condition: "grupo Pm · baseline", spikes: 69, responding: 8, dmActive: 0, reachable: 6 },
+      { condition: "grupo Pm · sem GABA", spikes: 160, responding: 8, dmActive: 0, reachable: 6 },
+      { condition: "nó LMa2 · baseline", spikes: 20, responding: 1, dmActive: 0, reachable: 6 },
+      { condition: "nó MTe52 · downstream", spikes: 493, responding: 46, dmActive: 6, reachable: 6 },
+      { condition: "nó LMa2 · aresta forçada", spikes: 333, responding: 46, dmActive: 6, reachable: 6 }
+    ];
     const FLYWIRE_PROTOCOL = Object.freeze({
       maxNeurons: 800,
       maxSynapses: 4000,
@@ -538,7 +545,12 @@
     }
 
     function loadCircuitReport() {
-      try { return JSON.parse(localStorage.getItem(REPORT_KEY) || "[]"); } catch (_) { return []; }
+      try {
+        const stored = localStorage.getItem(REPORT_KEY);
+        if (stored === null) return REFERENCE_REPORT.slice();
+        const records = JSON.parse(stored);
+        return Array.isArray(records) ? records : [];
+      } catch (_) { return REFERENCE_REPORT.slice(); }
     }
 
     function renderCircuitReport() {
@@ -1205,7 +1217,7 @@
       void simulateFlywire([rootId], `nó ${label}`);
     });
     ui.showPaths.addEventListener("click", () => { if (flywire.lastInputIds.length) showTopologicalPaths(flywire.lastInputIds); else ui.pathInfo.textContent = "Faça uma simulação primeiro para definir a entrada."; });
-    ui.clearReport.addEventListener("click", () => { try { localStorage.removeItem(REPORT_KEY); } catch (_) { /* storage is optional */ } renderCircuitReport(); });
+    ui.clearReport.addEventListener("click", () => { try { localStorage.setItem(REPORT_KEY, "[]"); } catch (_) { /* storage is optional */ } renderCircuitReport(); });
     ui.playDemo.addEventListener("click", playBehaviorDemo);
     ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; if (flywire.loaded) { highlightPersistentFlywireSpikes([]); clearTopologicalPaths(); } else { flywire.flashes.clear(); flywire.persistent.clear(); } ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.flywireActiveDescending.textContent = "—"; updateBehaviorDemo(0); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
     function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
