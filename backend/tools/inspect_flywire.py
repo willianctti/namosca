@@ -3,6 +3,7 @@
 
 Examples
 --------
+python tools/inspect_flywire.py data/flywire/sk_lod1_783_healed.zip
 python tools/inspect_flywire.py data/flywire/connections.csv.gz
 python tools/inspect_flywire.py data/flywire/cell_types.tsv --samples 3
 python tools/inspect_flywire.py data/flywire/neurons.jsonl --json-lines
@@ -13,8 +14,11 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import io
 import json
 import sys
+import zipfile
+from collections import Counter
 from pathlib import Path
 from typing import TextIO
 
@@ -70,10 +74,58 @@ def inspect_json_lines(path: Path, samples: int) -> dict[str, object]:
     return {"format": "jsonl", "keys": keys, "sample_rows": rows}
 
 
+def inspect_zip(path: Path, samples: int) -> dict[str, object]:
+    """Inspect a ZIP central directory and read only a few SWC members."""
+
+    try:
+        with zipfile.ZipFile(path) as archive:
+            infos = [info for info in archive.infolist() if not info.is_dir()]
+            extensions = Counter(
+                Path(info.filename).suffix.lower() or "<none>" for info in infos
+            )
+            swc_infos = [info for info in infos if info.filename.lower().endswith(".swc")]
+            sample_members: list[dict[str, object]] = []
+            for info in swc_infos[: max(0, samples)]:
+                with archive.open(info, "r") as raw:
+                    text = io.TextIOWrapper(raw, encoding="utf-8", errors="replace")
+                    comments: list[str] = []
+                    rows: list[str] = []
+                    for line in text:
+                        line = line.rstrip("\r\n")
+                        if line.startswith("#"):
+                            comments.append(line)
+                        else:
+                            rows.append(line)
+                            if len(rows) >= samples:
+                                break
+                sample_members.append(
+                    {
+                        "name": info.filename,
+                        "compressed_bytes": info.compress_size,
+                        "uncompressed_bytes": info.file_size,
+                        "comments": comments[:12],
+                        "sample_rows": rows,
+                    }
+                )
+            return {
+                "format": "zip",
+                "entries": len(infos),
+                "swc_files": len(swc_infos),
+                "extensions": dict(extensions),
+                "sample_members": sample_members,
+            }
+    except zipfile.BadZipFile as exc:
+        raise OSError(f"invalid ZIP archive: {exc}") from exc
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("path", type=Path, help="CSV, TSV, compressed CSV/TSV or JSONL file")
-    parser.add_argument("--samples", type=int, default=2, help="Number of sample rows to print")
+    parser.add_argument(
+        "path",
+        type=Path,
+        help="ZIP, CSV, TSV, compressed CSV/TSV or JSONL file",
+    )
+    parser.add_argument("--samples", type=int, default=2, help="Number of sample rows/files to print")
     parser.add_argument("--delimiter", choices=[",", "tab"], default=None)
     parser.add_argument("--json-lines", action="store_true", help="Force JSONL inspection")
     args = parser.parse_args()
@@ -81,11 +133,12 @@ def main() -> int:
         parser.error(f"file not found: {args.path}")
     delimiter = "\t" if args.delimiter == "tab" else args.delimiter
     try:
-        result = (
-            inspect_json_lines(args.path, args.samples)
-            if args.json_lines or args.path.suffix.lower() in {".jsonl", ".ndjson"}
-            else inspect_csv(args.path, args.samples, delimiter)
-        )
+        if args.path.suffix.lower() == ".zip" and not args.json_lines:
+            result = inspect_zip(args.path, args.samples)
+        elif args.json_lines or args.path.suffix.lower() in {".jsonl", ".ndjson"}:
+            result = inspect_json_lines(args.path, args.samples)
+        else:
+            result = inspect_csv(args.path, args.samples, delimiter)
     except (OSError, UnicodeError, csv.Error) as exc:
         print(f"could not inspect file: {exc}", file=sys.stderr)
         return 1

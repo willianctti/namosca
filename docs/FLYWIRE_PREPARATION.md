@@ -15,6 +15,29 @@ O adapter atual trabalha com JSON limitado e protege o processo com
 `MAX_REMOTE_BYTES`. Isso é intencional: o FastAPI não deve carregar o
 conectoma inteiro na memória.
 
+## Download já realizado
+
+O arquivo atual é o download do produto de skeletons do Codex para o dataset
+**FAFB v783 (CB)**:
+
+```text
+/home/mindwill/Downloads/sk_lod1_783_healed.zip
+```
+
+A inspeção local confirmou:
+
+- aproximadamente 13 GB;
+- 139.273 entradas, todas com extensão `.swc`;
+- um arquivo por root ID, com pontos 3D, raio e relação `parent`;
+- cabeçalho SWC com coordenadas em nanômetros;
+- nenhum arquivo de conexões ou anotações dentro deste ZIP.
+
+A página do Codex para [FAFB v783](https://codex.flywire.ai/?dataset=fafb)
+informa 139.255 neurônios e 3.732.460 conexões. A diferença de 18 entradas
+deve ser reconciliada com os metadados oficiais; não devemos assumir uma
+correspondência de um para um antes de cruzar o ZIP com a tabela de
+neurônios.
+
 ## 1. Guardar o download fora do Git
 
 O `.gitignore` já ignora `data/`, CSV, TSV, arquivos comprimidos e formatos
@@ -26,12 +49,34 @@ scientificos grandes. Use, por exemplo:
 
 Não envie esses arquivos para o GitHub.
 
+## Transição do Axobug para o FlyWire
+
+A substituição planejada é:
+
+```text
+Axobug (fase atual)
+        ↓
+skeletons FAFB v783 + conexões + anotações
+        ↓
+grafo local por root ID
+        ↓
+simulação LIF local
+        ↓
+spikes e comportamento
+```
+
+Até existirem conexões e metadados do mesmo snapshot, a API Axobug continua
+sendo a fonte de comportamento para não quebrar o Shadow Run. Ela será uma
+fonte de comparação, não o cérebro definitivo do NaMosca. O projeto não
+deve fabricar neurônios para preencher a lacuna.
+
 ## 2. Inspecionar os arquivos
 
 Para descobrir o formato e as colunas sem carregar o arquivo inteiro:
 
 ```bash
 cd backend
+python tools/inspect_flywire.py ../data/flywire/sk_lod1_783_healed.zip --samples 1
 python tools/inspect_flywire.py ../data/flywire/connections.csv.gz
 python tools/inspect_flywire.py ../data/flywire/cell_types.tsv --samples 3
 python tools/inspect_flywire.py ../data/flywire/neurons.jsonl --json-lines
@@ -158,8 +203,10 @@ pré-processar offline e servir apenas a sub-rede necessária.
 
 ## Checklist
 
-- [ ] Download termina
-- [ ] Nomes e formatos dos arquivos anotados
+- [x] Download do FAFB v783 identificado
+- [x] ZIP de skeletons inspecionado
+- [ ] Tabela de conexões do mesmo snapshot baixada
+- [ ] Tipos celulares/anotações baixados
 - [ ] Colunas de neurônio, posição e conexão inspecionadas
 - [ ] Sub-rede pequena escolhida
 - [ ] JSON normalizado gerado
@@ -167,4 +214,5 @@ pré-processar offline e servir apenas a sub-rede necessária.
 - [ ] `/api/network?source=flywire` responde
 - [ ] Frontend recebe grafo real
 - [ ] LIF local conectado ao grafo
+- [ ] Axobug relegado a comparação
 - [ ] Comportamento documentado no README e no artigo
