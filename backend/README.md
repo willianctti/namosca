@@ -23,8 +23,8 @@ curl -X POST \
   -d '{"stimulus":"loom","intensity":1,"duration_ms":100,"seed":42}'
 ```
 
-O mock foi removido. `/api/network` somente funciona depois que uma sub-rede
-real do FlyWire for preparada e configurada.
+O mock foi removido. `/api/network` usa somente uma sub-rede real do
+FlyWire quando `FLYWIRE_DATA_FILE` está configurado.
 
 ## Preparar FlyWire
 
@@ -35,5 +35,6 @@ Veja o guia:
 ```
 
 O arquivo bruto de 15 GB não deve ser carregado diretamente pelo FastAPI.
-Use `tools/inspect_flywire.py` para inspecionar CSV/TSV/JSONL por streaming e
-depois gere uma sub-rede normalizada pequena.
+Use `tools/inspect_flywire.py` para inspecionar os arquivos e
+`tools/prepare_flywire_graph.py` para gerar uma sub-rede normalizada por
+streaming, cruzando skeletons, conexões, tipos celulares e neurotransmissores.

@@ -84,7 +84,7 @@ def create_app() -> FastAPI:
         title="Drosophila Neuro Simulator",
         version=__version__,
         description=(
-            "Bounded 3D neural subnetwork API with a local FlyWire-shaped fallback, "
+            "Bounded 3D neural subnetwork API with optional real FlyWire graph data, "
             "LIF simulation and WebSocket spike streaming."
         ),
         lifespan=lifespan,
@@ -226,7 +226,7 @@ def create_app() -> FastAPI:
             },
             {
                 "id": Region.ALL.value,
-                "label": "Sub-rede completa (fallback)",
+                "label": "Sub-rede completa",
                 "default_input_role": "visual_input",
             },
         ]
@@ -244,7 +244,7 @@ def create_app() -> FastAPI:
             "flywire": {
                 "available": flywire.configured,
                 "role": "fonte real de neurônios e conexões",
-                "coordinates": "provider coordinates",
+                "coordinates": "normalized provider coordinates",
                 "configured_url": bool(settings.flywire_graph_url),
                 "configured_file": bool(settings.flywire_data_file),
             },

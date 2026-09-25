@@ -70,6 +70,48 @@ sendo a fonte de comportamento para não quebrar o Shadow Run. Ela será uma
 fonte de comparação, não o cérebro definitivo do NaMosca. O projeto não
 deve fabricar neurônios para preencher a lacuna.
 
+## Dados já baixados
+
+Além do ZIP de skeletons, foram baixados:
+
+```text
+/home/mindwill/Downloads/connections_princeton_no_threshold.csv.gz
+/home/mindwill/Downloads/consolidated_cell_types.csv.gz
+/home/mindwill/Downloads/neurons.csv.gz
+```
+
+Os schemas reais são:
+
+```text
+connections_princeton_no_threshold.csv.gz
+pre_root_id, post_root_id, neuropil, syn_count, nt_type
+
+consolidated_cell_types.csv.gz
+root_id, primary_type, additional_type(s)
+
+neurons.csv.gz
+root_id, group, nt_type, nt_type_score, da_avg, ser_avg,
+ gaba_avg, glut_avg, ach_avg, oct_avg
+```
+
+O arquivo de conexões tem 263 MB comprimidos, aproximadamente 1,14 GB
+descomprimidos e 22.285.323 linhas. Portanto, apesar de ser útil, ele é o
+produto `no_threshold`, não a pequena seleção inicial de 68 MB mencionada
+na interface. Para a primeira sub-rede, o importador aplica
+`--min-synapses 5`; esse filtro produz 3.754.052 pares, próximo da contagem
+de conexões apresentada pelo Codex.
+
+O `neurons.csv.gz` já contém a previsão de neurotransmissor e seus scores.
+Não é necessário baixar outro arquivo separado para essa primeira versão.
+
+A validação de junção confirmou:
+
+- 139.255 root IDs em `neurons.csv.gz`;
+- 139.116 root IDs distintos como endpoints das conexões;
+- todos esses endpoints aparecem em `neurons.csv.gz`;
+- 138.327 root IDs têm tipo celular; os demais permanecem sem tipo
+  classificado, sem serem descartados.
+
 ## 2. Inspecionar os arquivos
 
 Para descobrir o formato e as colunas sem carregar o arquivo inteiro:
@@ -85,7 +127,36 @@ python tools/inspect_flywire.py ../data/flywire/neurons.jsonl --json-lines
 A ferramenta lê apenas as primeiras linhas. Isso é seguro para arquivos de
 15 GB porque não constrói uma lista com o arquivo inteiro.
 
-## 3. Criar uma sub-rede
+## 3. Gerar a primeira sub-rede
+
+O importador processa os CSV comprimidos em streaming, seleciona os
+neurônios com maior grau dentro de uma região e lê somente os SWCs
+selecionados diretamente do ZIP. Para criar um exemplo do lobo óptico,
+usando o lado esquerdo do
+medula (`ME_L`):
+
+```bash
+cd backend
+python tools/prepare_flywire_graph.py \
+  --skeletons /home/mindwill/Downloads/sk_lod1_783_healed.zip \
+  --neurons /home/mindwill/Downloads/neurons.csv.gz \
+  --cell-types /home/mindwill/Downloads/consolidated_cell_types.csv.gz \
+  --connections /home/mindwill/Downloads/connections_princeton_no_threshold.csv.gz \
+  --group ME \
+  --neuropil ME_L \
+  --min-synapses 5 \
+  --max-neurons 800 \
+  --max-synapses 4000 \
+  --region optic_lobes \
+  --output ../data/flywire/me_left_flywire_graph.json
+```
+
+O JSON gerado contém posições dos somas, tipos celulares, neurotransmissores
+previstos, neuropilot e arestas reais. O peso do LIF é uma conversão
+computacional explícita: `min(10, log1p(syn_count))`; o atraso de 1 ms é uma
+hipótese inicial e não uma medida sináptica do FlyWire.
+
+## 4. Fluxo da sub-rede
 
 O fluxo recomendado é:
 
@@ -117,7 +188,7 @@ A primeira sub-rede deve ser pequena, por exemplo:
 
 Não tente carregar os 139 mil neurônios de uma vez no navegador.
 
-## 4. Formato normalizado esperado
+## 5. Formato normalizado esperado
 
 O adapter atual aceita um JSON neste formato:
 
@@ -146,10 +217,14 @@ O adapter atual aceita um JSON neste formato:
 }
 ```
 
-O próximo passo será gerar esse JSON automaticamente a partir dos CSV/TSV
-oficiais, depois de conferir os nomes reais das colunas no download.
+O importador gera esse JSON automaticamente a partir dos CSV/TSV oficiais
+e dos skeletons SWC. A primeira versão gerada foi:
 
-## 5. Ativar o backend
+```text
+../data/flywire/me_left_flywire_graph.json
+```
+
+## 6. Ativar o backend
 
 Com uma sub-rede preparada:
 
@@ -177,7 +252,7 @@ A primeira resposta deve mostrar:
 
 Se aparecer erro de configuração, o backend continuará sem mock e retornará um erro explícito.
 
-## 6. Integração com o frontend
+## 7. Integração com o frontend
 
 Depois que o endpoint `/api/network` funcionar:
 
@@ -188,7 +263,7 @@ Depois que o endpoint `/api/network` funcionar:
 5. mapear populações motoras para as animações;
 6. manter a fase Axobug como comparação.
 
-## 7. Memória e desempenho
+## 8. Memória e desempenho
 
 Os limites atuais são propositalmente conservadores:
 
@@ -205,14 +280,14 @@ pré-processar offline e servir apenas a sub-rede necessária.
 
 - [x] Download do FAFB v783 identificado
 - [x] ZIP de skeletons inspecionado
-- [ ] Tabela de conexões do mesmo snapshot baixada
-- [ ] Tipos celulares/anotações baixados
-- [ ] Colunas de neurônio, posição e conexão inspecionadas
-- [ ] Sub-rede pequena escolhida
-- [ ] JSON normalizado gerado
+- [x] Tabela de conexões do mesmo snapshot baixada
+- [x] Tipos celulares/anotações baixados
+- [x] Colunas de neurônio, posição e conexão inspecionadas
+- [x] Sub-rede pequena escolhida
+- [x] JSON normalizado gerado
 - [ ] `FLYWIRE_DATA_FILE` configurado
-- [ ] `/api/network?source=flywire` responde
+- [x] `/api/network?source=flywire` responde
 - [ ] Frontend recebe grafo real
-- [ ] LIF local conectado ao grafo
+- [x] LIF local conectado ao grafo
 - [ ] Axobug relegado a comparação
 - [ ] Comportamento documentado no README e no artigo

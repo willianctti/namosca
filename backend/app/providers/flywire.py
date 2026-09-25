@@ -7,7 +7,7 @@ inventing private Codex routes. The accepted input is deliberately permissive:
 common ``neurons``/``cells`` and ``synapses``/``connections`` field names are
 normalized into the backend schema.
 
-No credentials are required for the local fallback. If a FlyWire endpoint is
+No credentials are required for a local JSON export. If a FlyWire endpoint is
 configured, use a short-lived token through ``FLYWIRE_API_TOKEN`` and never
 commit it to source control.
 """
@@ -68,18 +68,33 @@ class FlyWireProvider:
             raise ProviderError("FlyWire graph contained no neurons for the requested region")
         id_map = {neuron.id: neuron for neuron in neurons}
         synapses = self._parse_synapses(payload, id_map, max_synapses)
+        source_metadata = payload.get("metadata") if isinstance(payload, dict) else None
+        metadata = dict(source_metadata) if isinstance(source_metadata, dict) else {}
+        metadata.update(
+            {
+                "remote": bool(self.graph_url and not self.data_file),
+                "local_file": bool(self.data_file),
+                "adapter": "flywire-json",
+                "description": "Normalized from the configured FlyWire/Codex-compatible JSON source.",
+            }
+        )
+        if isinstance(payload, dict):
+            source_region = payload.get("region")
+            if isinstance(source_region, str) and source_region:
+                metadata["source_region"] = source_region
+            coordinate_space = payload.get("coordinate_space")
+            units = payload.get("units")
+        else:
+            coordinate_space = None
+            units = None
         graph = Network(
             region=region.value,
             source=self.name,
-            coordinate_space="provider",
-            units="provider",
+            coordinate_space=str(coordinate_space or "provider"),
+            units=str(units or "provider"),
             neurons=neurons,
             synapses=synapses,
-            metadata={
-                "remote": True,
-                "adapter": "flywire-json",
-                "description": "Normalized from the configured FlyWire/Codex-compatible JSON source.",
-            },
+            metadata=metadata,
         )
         return limit_graph(graph, max_neurons=max_neurons, max_synapses=max_synapses)
 
@@ -158,18 +173,34 @@ class FlyWireProvider:
                 continue
             x, y, z = position
             cell_type = _first_value(record, "cell_type", "cellType", "type", "label")
+            additional_types = _first_value(
+                record, "additional_cell_types", "additional_type(s)", "additional_types"
+            )
+            group = _first_value(record, "group", "division", "compartment")
+            neuropil = _first_value(record, "neuropil", "region", "group")
+            nt_type = _first_value(record, "nt_type", "neurotransmitter", "transmitter")
             role = _first_value(record, "role", "class", "cell_class") or "interneuron"
             identifier = str(neuron_id)
             parsed.append(
                 Neuron(
                     id=identifier,
-                    label=str(_first_value(record, "label", "name", "display_name") or identifier),
+                    label=str(
+                        _first_value(record, "label", "name", "display_name")
+                        or cell_type
+                        or identifier
+                    ),
                     region=str(region_value or requested_region.value),
                     x=x,
                     y=y,
                     z=z,
                     role=str(role),
                     cell_type=str(cell_type) if cell_type is not None else None,
+                    additional_cell_types=(
+                        str(additional_types) if additional_types not in (None, "") else None
+                    ),
+                    group=str(group) if group is not None else None,
+                    neuropil=str(neuropil) if neuropil is not None else None,
+                    nt_type=str(nt_type) if nt_type not in (None, "") else None,
                 )
             )
             if len(parsed) >= max_neurons:
@@ -197,6 +228,18 @@ class FlyWireProvider:
             target = str(target)
             if source not in neurons or target not in neurons or source == target:
                 continue
+            synapse_count_value = _first_value(record, "synapse_count", "syn_count")
+            synapse_count: float | None
+            try:
+                synapse_count = (
+                    float(synapse_count_value)
+                    if synapse_count_value is not None
+                    else None
+                )
+            except (TypeError, ValueError):
+                synapse_count = None
+            if synapse_count is not None:
+                synapse_count = max(0.0, synapse_count)
             weight_value = _first_value(record, "weight", "strength", "synapse_count", "count")
             try:
                 weight = float(weight_value if weight_value is not None else 0.5)
@@ -209,10 +252,15 @@ class FlyWireProvider:
             except (TypeError, ValueError):
                 delay = 1.0
             inhibitory_value = _first_value(record, "inhibitory", "is_inhibitory")
+            nt_type_value = _first_value(record, "nt_type", "neurotransmitter", "transmitter")
+            nt_type = str(nt_type_value) if nt_type_value not in (None, "") else None
+            neuropil_value = _first_value(record, "neuropil", "region")
             if isinstance(inhibitory_value, str):
-                inhibitory = inhibitory_value.lower() in {"1", "true", "yes", "gaba", "glicina"}
-            else:
+                inhibitory = inhibitory_value.lower() in {"1", "true", "yes", "gaba", "gly", "glicina"}
+            elif inhibitory_value is not None:
                 inhibitory = bool(inhibitory_value)
+            else:
+                inhibitory = bool(nt_type and nt_type.upper() in {"GABA", "GLY"})
             parsed.append(
                 Synapse(
                     source=source,
@@ -220,6 +268,9 @@ class FlyWireProvider:
                     weight=weight,
                     delay_ms=max(0.0, min(1000.0, delay)),
                     inhibitory=inhibitory,
+                    synapse_count=synapse_count,
+                    neuropil=str(neuropil_value) if neuropil_value is not None else None,
+                    nt_type=nt_type,
                 )
             )
         return parsed

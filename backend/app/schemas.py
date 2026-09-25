@@ -77,6 +77,10 @@ class Neuron(StrictModel):
     z: float
     role: str = "interneuron"
     cell_type: str | None = None
+    additional_cell_types: str | None = None
+    group: str | None = None
+    neuropil: str | None = None
+    nt_type: str | None = None
 
 
 class Synapse(StrictModel):
@@ -87,6 +91,9 @@ class Synapse(StrictModel):
     weight: float = Field(ge=0.0)
     delay_ms: float = Field(default=1.0, ge=0.0, le=1000.0)
     inhibitory: bool = False
+    synapse_count: float | None = Field(default=None, ge=0.0)
+    neuropil: str | None = None
+    nt_type: str | None = None
 
 
 class GraphQuery(StrictModel):
@@ -107,8 +114,8 @@ class GraphQuery(StrictModel):
 class Network(StrictModel):
     """Normalized graph schema returned to clients.
 
-    The same shape is emitted by the local fallback and the optional remote
-    adapters. This prevents the frontend from depending on provider quirks.
+    The same shape is emitted by configured local and remote adapters. This
+    prevents the frontend from depending on provider quirks.
     """
 
     schema_version: Literal["1.0"] = "1.0"

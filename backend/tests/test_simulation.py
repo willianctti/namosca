@@ -33,10 +33,12 @@ def test_lif_propagates_a_delayed_synapse() -> None:
     assert result.spikes.tolist() == [1]
 
 
-def test_no_mock_graph_is_served_when_flywire_is_not_configured() -> None:
+def test_no_mock_graph_is_served_when_flywire_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
     from app.main import app
 
+    monkeypatch.delenv("FLYWIRE_DATA_FILE", raising=False)
+    monkeypatch.delenv("FLYWIRE_GRAPH_URL", raising=False)
     with TestClient(app) as client:
         health = client.get("/api/health")
         providers = client.get("/api/providers")

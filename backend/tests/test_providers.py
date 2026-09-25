@@ -44,3 +44,51 @@ async def test_flywire_json_file_adapter(tmp_path: Path) -> None:
     assert graph.synapses[0].source == "v1"
     assert graph.synapses[0].target == "v2"
     assert graph.synapses[0].weight == 0.75
+
+
+@pytest.mark.asyncio
+async def test_flywire_adapter_preserves_fafb_metadata(tmp_path: Path) -> None:
+    source = {
+        "region": "optic_lobes",
+        "coordinate_space": "swc_nanometers",
+        "units": "nanometer",
+        "metadata": {"dataset": "FAFB v783 (CB)"},
+        "neurons": [
+            {
+                "id": "100",
+                "region": "optic_lobes",
+                "x": 1,
+                "y": 2,
+                "z": 3,
+                "cell_type": "T4a",
+                "group": "ME",
+                "neuropil": "ME_L",
+                "nt_type": "ACH",
+            }
+        ],
+        "connections": [
+            {
+                "pre": "100",
+                "post": "100",
+                "synapse_count": 5,
+                "neuropil": "ME_L",
+                "nt_type": "GABA",
+            }
+        ],
+    }
+    path = tmp_path / "graph.json"
+    path.write_text(json.dumps(source), encoding="utf-8")
+    async with httpx.AsyncClient() as client:
+        provider = FlyWireProvider(client, data_file=str(path))
+        graph = await provider.fetch_network(
+            Region.OPTIC_LOBES,
+            max_neurons=10,
+            max_synapses=10,
+        )
+    assert graph.coordinate_space == "swc_nanometers"
+    assert graph.units == "nanometer"
+    assert graph.metadata["dataset"] == "FAFB v783 (CB)"
+    assert graph.neurons[0].nt_type == "ACH"
+    assert graph.neurons[0].cell_type == "T4a"
+    # Self-edges are excluded from the normalized topology.
+    assert graph.synapses == []

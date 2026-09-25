@@ -28,6 +28,6 @@ comportamental de uma mosca real.
 
 ## Próxima etapa
 
-Quando a sub-rede FlyWire estiver preparada, este frontend deverá ganhar um
-modo separado para exibir neurônios, coordenadas, sinapses e spikes
-individuais.
+A sub-rede FAFB v783 já é preparada e carregada pelo backend. O próximo
+passo é adicionar um modo separado neste frontend para exibir neurônios,
+coordenadas, sinapses e spikes individuais do LIF local.

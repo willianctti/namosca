@@ -86,8 +86,8 @@ class LIFSimulator:
         self._edge_delays = np.asarray(delays, dtype=np.float32)
         self._delay_buckets: dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
         for delay in sorted(set(float(value) for value in delays)):
-            # ``round`` is stable for the small delay values used by the mock
-            # graph and keeps a one-tick delivery window for sub-ms delays.
+            # ``round`` is stable for the small delay values used by test and
+            # bounded graphs and keeps a one-tick delivery window for sub-ms delays.
             delay_steps = max(1, int(round(delay / self.config.dt_ms)))
             mask = np.isclose(self._edge_delays, delay)
             if not np.any(mask):

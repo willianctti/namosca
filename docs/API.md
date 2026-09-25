@@ -1,4 +1,4 @@
-# API — fase real Axobug
+# API — Axobug + FlyWire local
 
 Base local:
 
@@ -20,9 +20,9 @@ curl http://localhost:8000/api/providers
 
 O retorno informa:
 
-- Axobug disponível para simulação/comportamento;
+- Axobug disponível para a comparação de comportamento;
 - mock desativado;
-- FlyWire ainda não configurado.
+- FlyWire configurado quando `FLYWIRE_DATA_FILE` está definido.
 
 ## Chamada real à Axobug
 
@@ -91,36 +91,70 @@ A UI usa o fluxo:
 A corrida e as animações são frontend; a resposta neural e os valores de
 `drive` vêm da API.
 
+## Grafo FlyWire local
+
+Com uma sub-rede gerada pelo importador, a rota retorna IDs, posições,
+tipos celulares, neurotransmissores e conexões reais:
 
 ```bash
-curl -i 'http://localhost:8000/api/network?region=optic_lobes'
+curl -i \
+  'http://localhost:8000/api/network?region=optic_lobes&source=flywire&max_neurons=800&max_synapses=4000'
 ```
 
-Enquanto o FlyWire não estiver configurado, essa rota retorna `503` com uma
-mensagem explicando que o mock está desativado.
-
-Para ativar dados reais futuramente:
+O arquivo local é configurado por:
 
 ```bash
-export FLYWIRE_GRAPH_URL='https://seu-proxy/flywire.json'
-# ou
-export FLYWIRE_DATA_FILE='./dados-flywire.json'
+export FLYWIRE_DATA_FILE='./data/flywire/me_left_flywire_graph.json'
 ```
 
-A pasta do projeto não fornece mais um grafo fictício.
+A pasta do projeto não fornece grafo fictício. Sem `FLYWIRE_DATA_FILE` ou
+`FLYWIRE_GRAPH_URL`, a rota retorna `503` explicitamente.
+
+## Simulação LIF local
+
+A mesma sub-rede pode ser simulada sem Axobug:
+
+```bash
+curl -X POST http://localhost:8000/api/simulate \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "graph": {
+      "region": "optic_lobes",
+      "source": "flywire",
+      "max_neurons": 800,
+      "max_synapses": 4000
+    },
+    "config": {
+      "duration_ms": 100,
+      "dt_ms": 5,
+      "frame_interval_ms": 10
+    },
+    "stimulus": {
+      "neuron_ids": [],
+      "intensity": 2.0,
+      "duration_ms": 20
+    },
+    "engine": "lif"
+  }'
+```
+
+Sem IDs explícitos, o simulador seleciona uma população de entrada conforme
+o papel disponível no subgrafo. A primeira sub-rede usa `role=unclassified`,
+então um teste inicial deve informar `neuron_ids` para ser reprodutível.
 
 ## WebSocket
 
-O WebSocket local fica reservado para a etapa FlyWire:
+O WebSocket local usa a mesma sub-rede configurada em `FLYWIRE_DATA_FILE`:
 
 ```text
 ws://localhost:8000/ws/simulation
 ```
 
-Sem uma fonte FlyWire configurada, ele não deve ser usado como fonte de
-neurônios.
+Sem uma fonte FlyWire configurada, ele deve retornar um erro explícito e não
+usa dados fictícios.
 
 ## Limite da API
 
-A Neuro API pública da Axobug é usada em cada experimento. Respeite o limite
-documentado pelo serviço e não faça uma chamada por quadro desenhado.
+A Neuro API pública da Axobug continua disponível para comparação. Respeite
+o limite documentado pelo serviço e não faça uma chamada por quadro
+desenhado. A simulação LIF local usa o subgrafo FlyWire carregado no backend.

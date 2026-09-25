@@ -235,7 +235,9 @@ Esta distinção é fundamental para o projeto.
 O projeto utiliza:
 
 - dados e nomenclaturas derivados do ecossistema FlyWire;
-- modelo computacional disponibilizado pela Axobug;
+- snapshots estáticos do FAFB v783 para a primeira sub-rede local;
+- modelo computacional disponibilizado pela Axobug enquanto a migração local
+  está em andamento;
 - arquitetura neural baseada em LIF;
 - respostas neurais produzidas pela Neuro API.
 
@@ -247,6 +249,7 @@ O projeto implementa:
 - seleção de estímulos;
 - comunicação com a API;
 - backend/proxy FastAPI;
+- ingestão em streaming dos exports FAFB;
 - interpretação dos sinais `drive`;
 - visualização 3D;
 - Shadow Run;
@@ -265,6 +268,26 @@ O NaMosca não afirma que:
 - uma única simulação computacional constitui uma reprodução completa do comportamento animal.
 
 Essas limitações são importantes para manter a distinção entre **dados biológicos, modelo computacional e visualização experimental**.
+
+## Primeira sub-rede FlyWire local
+
+A ingestão dos produtos estáticos do FAFB v783 já foi implementada. A
+primeira sub-rede gerada contém 800 neurônios e 4.000 conexões do neuropilo
+`ME_L`, com:
+
+- posições dos somas extraídas dos arquivos SWC;
+- `root_id` como chave de junção;
+- tipos celulares do `consolidated_cell_types.csv.gz`;
+- previsões de neurotransmissor do `neurons.csv.gz`;
+- arestas e contagens sinápticas do FlyWire.
+
+O JSON gerado está em `data/flywire/me_left_flywire_graph.json` e é ignorado
+pelo Git. O backend já consegue carregá-lo e executar o LIF local. A
+conversão de `syn_count` para peso e o atraso de 1 ms são hipóteses
+computacionais explícitas, não medidas sinápticas diretas.
+
+O comando de preparação e a validação dos arquivos estão em
+[`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
 
 ---
 
@@ -388,7 +411,9 @@ Experimentos futuros deverão registrar também:
 - condições iniciais;
 - resultados comportamentais.
 
-O mapa 3D de neurônios e sinapses reais é a próxima etapa. O guia de preparação do download está em [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
+O mapa 3D de neurônios e sinapses reais é a próxima etapa. A ingestão local
+já foi preparada e uma primeira sub-rede `ME_L` foi gerada; o guia completo
+está em [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
 
 ---
 
@@ -409,21 +434,21 @@ O NaMosca foi pensado como uma plataforma experimental incremental.
 
 ### Fase 2 — Connectome
 
-- [ ] Obter dados estáticos autorizados do FlyWire
-- [ ] Parser dos dados oficiais
-- [ ] Mapear root IDs
-- [ ] Mapear posições neuronais
-- [ ] Mapear conexões
+- [x] Obter dados estáticos autorizados do FlyWire
+- [x] Parser dos dados oficiais para sub-redes
+- [x] Mapear root IDs
+- [x] Mapear posições dos somas
+- [x] Mapear conexões e tipos celulares
 - [ ] Visualizar neurônios em 3D
 - [ ] Visualizar sinapses
 - [ ] Explorar sub-redes específicas
 
 ### Fase 3 — Simulação local
 
-- [ ] Implementar simulação LIF local sobre sub-redes reais
-- [ ] Executar sub-redes do connectome
+- [x] Implementar simulação LIF local sobre sub-redes reais
+- [x] Executar a primeira sub-rede do connectome
 - [ ] Comparar resultados locais com a API
-- [ ] Instrumentar spikes individualmente
+- [ ] Instrumentar spikes individualmente no frontend
 - [ ] Medir desempenho
 - [ ] Reproduzir circuitos motores específicos
 
@@ -515,10 +540,11 @@ O NaMosca é um projeto experimental.
 
 Atualmente:
 
-- a simulação neural principal é executada pela infraestrutura da Axobug;
-- a API pública não expõe necessariamente o grafo completo de neurônios em cada requisição;
+- a interface principal e o Shadow Run ainda usam a infraestrutura da Axobug;
+- a primeira sub-rede FlyWire local já pode ser executada pelo backend LIF, mas ainda não é o modo visual padrão do frontend;
 - a visualização 3D não representa individualmente todos os neurônios;
-- os sinais `drive` são abstrações fornecidas pelo modelo;
+- o peso sináptico e o atraso usados na primeira sub-rede são hipóteses computacionais, não medidas biológicas diretas;
+- os sinais `drive` são abstrações fornecidas pelo modelo Axobug;
 - comportamento visual não deve ser interpretado como validação biológica;
 - resultados do modelo não substituem experimentos com organismos vivos.
 
@@ -541,6 +567,10 @@ namosca/
 |   |   |-- services/
 |   |   `-- simulation.py
 |   |
+|   |-- tools/
+|   |   |-- inspect_flywire.py
+|   |   `-- prepare_flywire_graph.py
+|   |
 |   `-- tests/
 |
 |-- frontend/
@@ -548,7 +578,8 @@ namosca/
 |   `-- README.md
 |
 |-- docs/
-|   `-- API.md
+|   |-- API.md
+|   `-- FLYWIRE_PREPARATION.md
 |
 |-- LICENSE
 `-- README.md
