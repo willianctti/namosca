@@ -556,8 +556,17 @@
         const countText = counts.length ? `${Math.min(...counts)}–${Math.max(...counts)}` : "—";
         return `Caminho ${index + 1}: ${path.distance} sinapses, ${inhibitoryCount} inibitórias, syn_count ${countText}, NT ${types}`;
       });
-      ui.pathDetails.textContent = pathDetails.join(" · ");
-      console.info("[FlyWire] path edge details", pathDetails);
+      const firstEdgeDetails = paths[0].edges.map(edge => {
+        const synapse = edgeLookup.get(`${edge.source}|${edge.target}`);
+        const sourceIndex = flywire.nodeIndex.get(edge.source);
+        const targetIndex = flywire.nodeIndex.get(edge.target);
+        const sourceLabel = sourceIndex === undefined ? edge.source : String(flywire.network.neurons[sourceIndex].cell_type || edge.source);
+        const targetLabel = targetIndex === undefined ? edge.target : String(flywire.network.neurons[targetIndex].cell_type || edge.target);
+        const sign = synapse?.inhibitory ? "INIBITÓRIA" : "EXCITATÓRIA";
+        return `${sourceLabel} --${sign}; ${synapse?.nt_type || "NT desconhecido"}--> ${targetLabel}`;
+      });
+      ui.pathDetails.textContent = `${pathDetails.join(" · ")} | Primeiro: ${firstEdgeDetails.join(" | ")}`;
+      console.info("[FlyWire] path edge details", { summaries: pathDetails, firstPathEdges: firstEdgeDetails });
       const positionAttribute = flywire.nodes.geometry.getAttribute("position");
       const edgePositions = [];
       const nodeIds = new Set();
