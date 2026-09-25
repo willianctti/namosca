@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#101a38" />
-  <title>NaMosca — Axobug + FlyWire local</title>
+  <title>NaMosca — FlyWire local + LIF</title>
   <style>
     :root {
       color-scheme: dark;
@@ -190,7 +190,7 @@
 
   <section id="controls" class="panel">
     <h1>NaMosca <span id="modeBadge" class="badge local">FLYWIRE LOCAL</span></h1>
-    <p class="subtitle">FAFB v783 real + LIF local · Axobug como comparação</p>
+    <p class="subtitle">FAFB v783 real + LIF local + ponte MCNS/MANC</p>
 
     <div class="section">
       <h2>Conexão</h2>
@@ -199,7 +199,6 @@
       <label class="field"><span class="label">Modo de experimento</span>
         <select id="engineMode">
           <option value="flywire">FlyWire local · LIF sobre grafo real</option>
-          <option value="axobug">Axobug · comparação de comportamento</option>
         </select>
       </label>
       <div class="mode-note" id="modeNote">Carregando a sub-rede FAFB v783 do backend…</div>
@@ -233,8 +232,6 @@
           <option value="untyped">Sem tipo celular (se houver)</option>
         </select>
       </label>
-      <label class="field check-field"><input id="ablateInhibitory" type="checkbox" /> <span>Remover efeito das conexões inibitórias (ablação)</span></label>
-      <label class="field check-field"><input id="forcePathExcitatory" type="checkbox" /> <span>Forçar primeira aresta do caminho como excitatória (contrafactual)</span></label>
       <details class="advanced-panel">
         <summary>Mais opções: caminhos e nó isolado</summary>
         <div class="advanced-content">
@@ -318,7 +315,7 @@
       </div>
     </div>
 
-    <div class="section" id="axobugExperiments">
+    <div class="section" id="axobugExperiments" hidden>
       <h2>Experimentos Axobug · comparação</h2>
       <div class="buttons">
         <button id="foodBtn">Cheiro → andar</button>
@@ -494,14 +491,14 @@
           if (providers.flywire?.available) {
             await loadFlywireGraph();
           } else {
-            ui.modeNote.textContent = "FlyWire ainda não está configurado no backend. O modo Axobug permanece disponível.";
-            setMode("axobug");
+            ui.modeNote.textContent = "FlyWire ainda não está configurado no backend."; setMode("flywire");
+            setMode("flywire");
           }
         }
       } catch (_) {
         setBackend("Indisponível");
         ui.modeNote.textContent = "Backend indisponível. Verifique se o FastAPI está rodando na porta 8000.";
-        setMode("axobug");
+        setMode("flywire");
       }
     }
 
@@ -534,7 +531,7 @@
     }
 
     function setMode(mode) {
-      currentMode = mode === "axobug" ? "axobug" : "flywire";
+      currentMode = "flywire";
       const local = currentMode === "flywire";
       ui.mode.value = currentMode;
       ui.modeBadge.textContent = local ? "FLYWIRE LOCAL" : "AXOBUG COMPARISON";
@@ -937,7 +934,7 @@
         console.error("[FlyWire] graph load failed", error);
         ui.flywireStatus.textContent = `Não foi possível carregar o FlyWire: ${error.message}`;
         setBackend("FlyWire indisponível");
-        if (currentMode === "flywire") setMode("axobug");
+        if (currentMode === "flywire") setMode("flywire");
       } finally {
         ui.loadFlywire.disabled = false;
       }
@@ -1081,8 +1078,8 @@
       flywire.lastInputIds = neuronIds;
       showTopologicalPaths(neuronIds);
       const reachability = analyzeDmReachability(neuronIds);
-      const ablationLabel = ui.ablateInhibitory.checked ? "com inibição removida" : "normal";
-      const counterfactualLabel = ui.forcePathExcitatory.checked ? ", primeira aresta forçada como excitatória" : "";
+      const ablationLabel = "normal";
+      const counterfactualLabel = "";
       ui.simulateFlywire.disabled = true;
       ui.flywireStatus.textContent = `Executando LIF local (${ablationLabel}${counterfactualLabel}) com ${count} neurônios de ${groupLabel}; ${reachability.reachable} Dm topologicamente alcançáveis...`;
       setBackend("Simulando FlyWire local...", "loading");
@@ -1092,8 +1089,8 @@
           config: { duration_ms: FLYWIRE_PROTOCOL.durationMs, dt_ms: FLYWIRE_PROTOCOL.dtMs, frame_interval_ms: FLYWIRE_PROTOCOL.frameIntervalMs },
           stimulus: { neuron_ids: neuronIds, intensity: FLYWIRE_PROTOCOL.intensity, duration_ms: FLYWIRE_PROTOCOL.stimulusDurationMs },
           engine: "lif",
-          ablate_inhibitory: ui.ablateInhibitory.checked,
-          excitatory_edge_overrides: ui.forcePathExcitatory.checked && flywire.overrideEdge ? [flywire.overrideEdge] : []
+          ablate_inhibitory: false,
+          excitatory_edge_overrides: []
         }) });
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail?.error || `HTTP ${response.status}`);
@@ -1103,14 +1100,14 @@
         updateFlywireStats(flywire.network, result, spikeIds);
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
-        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
+        console.info("[FlyWire] LIF simulation", result.stats, { inputGroup, ablateInhibitory: false, forcePathExcitatory: false, inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent, topologicallyReachableDm: reachability.reachable, shortestPath: reachability.shortest });
         const motorOutput = result.motor_output || { available: false, active_dm_count: 0, systems: {} };
         if (motorOutput.available && motorOutput.active_dm_count > 0) {
           const systemText = Object.entries(motorOutput.systems || {}).map(([name, value]) => `${name}: ${value}`).join(" · ");
           ui.demoStatus.textContent = `Rota Dm → DN → MN atingida: ${motorOutput.active_dm_count} tipo(s) Dm. ${systemText || "sem sistema classificado"}. Pesos são conectômicos, não força muscular.`;
         }
         updateBehaviorDemo(Number(ui.flywireActiveDescending.textContent) || 0, motorOutput.systems || {});
-        recordCircuitExperiment({ inputGroup, groupLabel, ablateInhibitory: ui.ablateInhibitory.checked, forcePathExcitatory: ui.forcePathExcitatory.checked, result, reachability });
+        recordCircuitExperiment({ inputGroup, groupLabel, ablateInhibitory: false, forcePathExcitatory: false, result, reachability });
         if (lastDmActive > 0) playBehaviorDemo();
         ui.flywireStatus.textContent = `LIF local (${groupLabel}, ${ablationLabel}${counterfactualLabel}): ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos destacados, ${ui.flywireActiveDescending.textContent} Dm ativos e ${reachability.reachable} Dm alcançáveis na topologia. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
