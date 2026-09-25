@@ -207,7 +207,6 @@
     <div class="section" id="flywirePanel">
       <h2>FlyWire local</h2>
       <div class="buttons">
-        <button id="loadFlywireBtn" class="secondary">Carregar sub-rede real</button>
         <button id="simulateFlywireBtn">Simular LIF local</button>
       </div>
       <div class="graph-stats">
@@ -442,7 +441,7 @@
       interpretation: $("interpretation"), meta: $("responseMeta"), channelBars: $("channelBars"), driveBars: $("driveBars"),
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
-      flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
+      flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), simulateFlywire: $("simulateFlywireBtn"),
       flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"), localAnalysis: $("localAnalysis"), reportTable: $("reportTable"), reportEmpty: $("reportEmpty"), clearReport: $("clearReportBtn"), demoTrack: $("demoTrack"), demoStatus: $("demoStatus"), playDemo: $("playDemoBtn"), flyBodyDemo: $("flyBodyDemo"), flyBodyVisual: $("flyBodyVisual"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
@@ -919,7 +918,7 @@
     }
 
     async function loadFlywireGraph() {
-      ui.loadFlywire.disabled = true;
+      ui.simulateFlywire.disabled = true;
       ui.flywireStatus.textContent = "Carregando a sub-rede real do FlyWire...";
       try {
         const response = await fetch(`${API_URL}/api/network?region=optic_lobes&source=flywire&max_neurons=${FLYWIRE_PROTOCOL.maxNeurons}&max_synapses=${FLYWIRE_PROTOCOL.maxSynapses}`, { cache: "no-store" });
@@ -936,7 +935,7 @@
         setBackend("FlyWire indisponível");
         if (currentMode === "flywire") setMode("flywire");
       } finally {
-        ui.loadFlywire.disabled = false;
+        ui.simulateFlywire.disabled = false;
       }
     }
 
@@ -1306,7 +1305,6 @@
     ui.stimulus.addEventListener("change", () => { ui.status.textContent = `${ui.stimulus.value} selecionado. Clique em executar para consultar a Axobug.`; });
     ui.frames.addEventListener("click", fetchFullFrames);
     ui.mode.addEventListener("change", () => setMode(ui.mode.value));
-    ui.loadFlywire.addEventListener("click", loadFlywireGraph);
     ui.simulateFlywire.addEventListener("click", () => simulateFlywire());
     ui.simulatePathNode.addEventListener("click", () => {
       const rootId = ui.pathNode.value;
