@@ -126,6 +126,10 @@
     .legend-dot.spike { background: var(--yellow); }
     .legend-line { display: inline-block; width: 16px; height: 2px; margin: 0 4px 3px 0; background: #b58cff; }
     .legend-line.inhibitory { background: #ff7885; }
+    .graph-help { margin-top: 10px; padding: 9px 10px; border-left: 2px solid var(--cyan); border-radius: 6px; color: var(--muted); background: #65f2ff0b; font-size: 11px; }
+    .graph-help strong { color: var(--cyan); }
+    .graph-help ol { margin: 6px 0 0 17px; padding: 0; }
+    .graph-help li { margin: 3px 0; }
     #error { margin-top: 10px; color: #ffb1ba; font-size: 12px; }
     @media (max-width: 720px) {
       #controls { top: 10px; left: 10px; width: min(330px, calc(100vw - 20px)); max-height: 48vh; padding: 14px; }
@@ -173,6 +177,15 @@
         <span><i class="legend-dot spike"></i>spike</span>
         <span><i class="legend-line"></i>excitatória</span>
         <span><i class="legend-line inhibitory"></i>inibitória</span>
+      </div>
+      <div class="graph-help">
+        <strong>Como usar esta primeira versão</strong>
+        <ol>
+          <li>Clique em <b>Simular LIF local</b> para injetar corrente em alguns pontos.</li>
+          <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
+          <li>Pontos amarelos indicam spikes; as linhas mostram conexões entre os pontos.</li>
+          <li>Use <b>Axobug · comparação</b> para ver a animação comportamental antiga.</li>
+        </ol>
       </div>
       <div id="flywireStatus" class="experiment-status">Aguardando a sub-rede real do FlyWire.</div>
       <div id="flywireFrameChart" class="frame-chart" aria-label="Spikes da simulação LIF local"></div>
@@ -474,7 +487,7 @@
         const network = await response.json();
         if (!response.ok) throw new Error(network.detail?.error || `HTTP ${response.status}`);
         renderFlywireGraph(network);
-        ui.flywireStatus.textContent = "Sub-rede carregada. Os IDs, coordenadas e conexões vêm do FAFB v783.";
+        ui.flywireStatus.textContent = "Sub-rede carregada. Os pontos são somas de neurônios reais; as linhas são conexões agregadas do FAFB v783.";
         setBackend("FlyWire local", "ok");
         setMode(currentMode);
       } catch (error) {
