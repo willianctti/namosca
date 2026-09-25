@@ -254,7 +254,19 @@ def _run_local_sync(
     """Synchronous core, safe to execute in a worker thread."""
 
     config = request.config
-    simulator = LIFSimulator(network, config)
+    simulation_network = network
+    if request.ablate_inhibitory:
+        simulation_network = network.model_copy(
+            update={
+                "synapses": [
+                    synapse.model_copy(update={"inhibitory": False, "weight": 0.0})
+                    if synapse.inhibitory
+                    else synapse
+                    for synapse in network.synapses
+                ]
+            }
+        )
+    simulator = LIFSimulator(simulation_network, config)
     stimulus = simulator.stimulus_vector(request.stimulus, region=network.region)
     zero = np.zeros(simulator.neuron_count, dtype=np.float32)
     requested_steps = max(1, int(round(config.duration_ms / config.dt_ms)))
@@ -293,6 +305,7 @@ def _run_local_sync(
         "frame_stride_steps": frame_stride,
         "ring_buffer_slots": simulator._ring_size,
         "input_neuron_count": int(np.count_nonzero(stimulus)),
+        "ablate_inhibitory": request.ablate_inhibitory,
     }
     return frames, stats, metadata
 

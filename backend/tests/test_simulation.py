@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from app.schemas import GraphQuery, Network, Neuron, SimulationConfig, Synapse
-from app.simulation import LIFSimulator
+from app.schemas import GraphQuery, Network, Neuron, SimulationConfig, SimulationRequest, Stimulus, Synapse
+from app.simulation import LIFSimulator, run_local
 
 
 def test_region_alias_is_supported() -> None:
@@ -31,6 +31,35 @@ def test_lif_propagates_a_delayed_synapse() -> None:
     simulator.step(np.asarray([2.0, 0.0], dtype=np.float32))
     result = simulator.step(np.asarray([0.0, 0.0], dtype=np.float32))
     assert result.spikes.tolist() == [1]
+
+
+@pytest.mark.asyncio
+async def test_inhibitory_ablation_releases_a_competing_excitatory_path() -> None:
+    graph = Network(
+        region="visual",
+        source="test-fixture",
+        coordinate_space="test",
+        units="normalized",
+        neurons=[
+            Neuron(id="a", label="a", region="visual", x=0, y=0, z=0),
+            Neuron(id="b", label="b", region="visual", x=1, y=0, z=0),
+            Neuron(id="c", label="c", region="visual", x=2, y=0, z=0),
+        ],
+        synapses=[
+            Synapse(source="a", target="b", weight=5.0, delay_ms=5.0, inhibitory=True),
+            Synapse(source="c", target="b", weight=5.0, delay_ms=5.0, inhibitory=False),
+        ],
+    )
+    request = SimulationRequest(
+        graph=GraphQuery(region="visual"),
+        config=SimulationConfig(dt_ms=5, duration_ms=15, threshold=1.0, tau_ms=20),
+        stimulus=Stimulus(neuron_ids=["a", "c"], intensity=2.0, duration_ms=10),
+        ablate_inhibitory=True,
+    )
+    result = await run_local(graph, request)
+    assert result.metadata["ablate_inhibitory"] is True
+    assert result.stats.responding_neurons == 3
+    assert result.stats.total_spikes >= 3
 
 
 def test_no_mock_graph_is_served_when_flywire_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:

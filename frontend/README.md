@@ -34,6 +34,8 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
   `MeMe` e neurônios sem tipo;
 - `Dm` funciona como controle direto de entrada, não como prova de um
   estímulo sensorial;
+- a caixa de ablação remove o efeito das conexões inibitórias para comparar
+  o mesmo experimento com e sem GABA no modelo;
 - o botão de limpeza remove os destaques e o gráfico de frames;
 - o painel inclui um glossário de GABA, ACH, OCT, Dm, syn_count e LIF.
 

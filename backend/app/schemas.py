@@ -182,6 +182,7 @@ class SimulationRequest(StrictModel):
     stimulus: Stimulus = Field(default_factory=Stimulus)
     engine: Literal["lif", "axobug"] = "lif"
     include_voltage: bool = False
+    ablate_inhibitory: bool = False
 
 
 class SpikeFrame(StrictModel):
