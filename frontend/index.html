@@ -81,6 +81,7 @@
     button.secondary { background: #ffffff0d; }
     .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .buttons button { margin-top: 0; }
+    #flywirePanel > .buttons { grid-template-columns: 1fr; }
     .field { display: grid; gap: 6px; margin-top: 11px; }
     .field input, .field select { width: 100%; padding: 8px; border: 1px solid #82b7ff55; border-radius: 8px; background: #ffffff0d; }
     .check-field { display: flex; align-items: center; gap: 8px; }
@@ -209,7 +210,9 @@
       <div class="buttons">
         <button id="simulateFlywireBtn">Simular LIF local</button>
       </div>
-      <div class="graph-stats">
+      <details class="advanced-panel graph-details">
+        <summary>Ver números da sub-rede</summary>
+        <div class="graph-stats">
         <div class="graph-stat"><small>Neurônios</small><strong id="flywireNeurons">—</strong></div>
         <div class="graph-stat"><small>Conexões</small><strong id="flywireSynapses">—</strong></div>
         <div class="graph-stat"><small>Dataset</small><strong id="flywireDataset">—</strong></div>
@@ -218,7 +221,8 @@
         <div class="graph-stat"><small>Dm ativos</small><strong id="flywireActiveDescending">—</strong></div>
         <div class="graph-stat"><small>Dm alcançáveis</small><strong id="flywireReachableDescending">—</strong></div>
         <div class="graph-stat"><small>Menor caminho</small><strong id="flywireShortestPath">—</strong></div>
-      </div>
+       </div>
+      </details>
       <label class="field"><span class="label">Neurônios de entrada exploratórios</span><input id="flywireInputCount" type="number" min="1" max="64" step="1" value="8" /></label>
       <label class="field"><span class="label">População de entrada</span>
         <select id="flywireInputGroup">

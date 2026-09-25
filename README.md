@@ -314,7 +314,7 @@ A leitura correta é: o modelo local encontrou um gargalo computacional na
 aresta `LMa2 → MTe52`. A leitura incorreta seria afirmar que isso já prova
 comportamento de pulo ou fuga.
 
-Para entender o fluxo completo, veja [`docs/DATA_PIPELINE.md`](docs/DATA_PIPELINE.md): ele explica cada dataset, os campos usados, como FAFB → MCNS → MANC são cruzados e onde começa a hipótese neuromecânica.
+Para entender o fluxo completo, veja [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md): ele explica o frontend, o backend, a origem dos dados, o retorno JSON, o cruzamento dos datasets e a ligação com as partes do corpo.
 
 A ponte inicial com o MANC também já foi processada: 737 neurônios motores,
 1.328 descendentes e 25.818 linhas de conexão descendente → motor foram
