@@ -316,8 +316,11 @@ comportamento de pulo ou fuga.
 
 A ponte inicial com o MANC também já foi processada: 737 neurônios motores,
 1.328 descendentes e 25.818 linhas de conexão descendente → motor foram
-catalogadas. As colunas de corpo e função do MANC estão vazias; o atlas
-muscular do FANC ainda é necessário para ligar um MN a um músculo específico.
+catalogadas. O MCNS v1.0 também foi validado e fornece as colunas
+`flywireType`, `mancType`, `mancBodyid`, `entryNerve` e `exitNerve`; a ponte
+local está em `data/flywire/mcns_manc_bridge.json`. As colunas de corpo e
+função do MANC estão vazias; o atlas muscular ainda é necessário para ligar
+um MN a um músculo específico.
 
 Termos usados no projeto:
 

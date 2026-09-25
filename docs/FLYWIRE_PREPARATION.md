@@ -289,7 +289,20 @@ O catálogo agrupa candidatos por nervo e sistema amplo. Ele não é ainda um
 mapa de músculos: `Body Part` e `Function` vêm vazios no MANC, e o atlas
 muscular do FANC continua sendo necessário.
 
-## 8. Memória e desempenho
+## Ponte MCNS → FAFB/MANC
+
+O MCNS v1.0 fornece uma ponte de tipos celulares por meio das colunas
+`flywireType`, `mancType` e `mancBodyid`. Gere o catálogo com:
+
+```bash
+python tools/prepare_mcns_bridge.py \
+  --annotations /caminho/body-annotations-male-cns-v1.0-minconf-0.5.feather \
+  --output ../data/flywire/mcns_manc_bridge.json
+```
+
+Os arquivos de neurotransmissores do MCNS são opcionais para a ponte e podem
+ser lidos separadamente com `pyarrow.feather`.
+
 
 Os limites atuais são propositalmente conservadores:
 

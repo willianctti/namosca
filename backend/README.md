@@ -38,4 +38,6 @@ O arquivo bruto de 15 GB não deve ser carregado diretamente pelo FastAPI.
 Use `tools/inspect_flywire.py` para inspecionar os arquivos,
 `tools/prepare_flywire_graph.py` para gerar a sub-rede cerebral e
 `tools/prepare_manc_motor_catalog.py` para catalogar neurônios motores e
-descendentes do gânglio ventral por streaming.
+descendentes do gânglio ventral por streaming, e
+`tools/prepare_mcns_bridge.py` para gerar a ponte MCNS → FAFB/MANC a partir
+das anotações Feather.
