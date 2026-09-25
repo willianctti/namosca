@@ -191,6 +191,7 @@
       </label>
       <button id="showPathsBtn" class="secondary">Mostrar caminhos até Dm</button>
       <div id="flywirePathInfo" class="readout">Nenhum caminho topológico destacado.</div>
+      <div id="flywirePathDetails" class="readout">Os detalhes das conexões aparecerão aqui.</div>
       <div class="graph-legend">
         <span><i class="legend-dot"></i>neurônio</span>
         <span><i class="legend-dot spike"></i>spike</span>
@@ -322,7 +323,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -474,6 +475,7 @@
       flywire.pathOverlay = null;
       flywire.pathNodeOverlay = null;
       ui.pathInfo.textContent = "Nenhum caminho topológico destacado.";
+      ui.pathDetails.textContent = "Os detalhes das conexões aparecerão aqui.";
     }
 
     function findTopologicalPaths(startIds, maxPaths = 3) {
@@ -518,6 +520,17 @@
         ui.pathInfo.textContent = "Nenhum caminho Dm encontrado a partir dessa entrada.";
         return;
       }
+      const edgeLookup = new Map(flywire.network.synapses.map(synapse => [`${synapse.source}|${synapse.target}`, synapse]));
+      const pathDetails = paths.map((path, index) => {
+        const edges = path.edges.map(edge => edgeLookup.get(`${edge.source}|${edge.target}`)).filter(Boolean);
+        const counts = edges.map(edge => Number(edge.synapse_count)).filter(Number.isFinite);
+        const inhibitoryCount = edges.filter(edge => edge.inhibitory).length;
+        const types = [...new Set(edges.map(edge => edge.nt_type).filter(Boolean))].join(", ") || "sem tipo";
+        const countText = counts.length ? `${Math.min(...counts)}–${Math.max(...counts)}` : "—";
+        return `Caminho ${index + 1}: ${path.distance} sinapses, ${inhibitoryCount} inibitórias, syn_count ${countText}, NT ${types}`;
+      });
+      ui.pathDetails.textContent = pathDetails.join(" · ");
+      console.info("[FlyWire] path edge details", pathDetails);
       const positionAttribute = flywire.nodes.geometry.getAttribute("position");
       const edgePositions = [];
       const nodeIds = new Set();
