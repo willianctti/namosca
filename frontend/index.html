@@ -183,7 +183,7 @@
         <ol>
           <li>Clique em <b>Simular LIF local</b> para injetar corrente em alguns pontos.</li>
           <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
-          <li>Pontos amarelos indicam spikes; as linhas mostram conexões entre os pontos.</li>
+          <li>Pontos amarelos indicam spikes e permanecem destacados até você limpar a cena; as linhas mostram conexões.</li>
           <li>Use <b>Axobug · comparação</b> para ver a animação comportamental antiga.</li>
         </ol>
       </div>
@@ -309,7 +309,7 @@
     let shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: 0, token: 0 };
     let lastBrain = null, lastRequest = null, history = [];
     let currentMode = "flywire";
-    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), playbackToken: 0, frameTimer: null };
+    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), playbackToken: 0, frameTimer: null };
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const fixed = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
     const STIMULUS_INFO = {
@@ -416,7 +416,7 @@
         disposeObject(flywireGroup);
       }
       flywireGroup = null;
-      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), playbackToken: 0, frameTimer: null };
+      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), playbackToken: 0, frameTimer: null };
       ui.flywireNeurons.textContent = "—";
       ui.flywireSynapses.textContent = "—";
       ui.flywireDataset.textContent = "—";
@@ -455,7 +455,7 @@
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.Float32BufferAttribute(flatPositions, 3));
       geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-      const nodes = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .045, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: .95 }));
+      const nodes = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .065, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: .95 }));
       nodes.frustumCulled = false;
       const excitatory = [];
       const inhibitory = [];
@@ -473,7 +473,7 @@
       if (excitatory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(excitatory, 3)), new THREE.LineBasicMaterial({ color: 0xb58cff, transparent: true, opacity: .18, depthWrite: false })));
       if (inhibitory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(inhibitory, 3)), new THREE.LineBasicMaterial({ color: 0xff7885, transparent: true, opacity: .22, depthWrite: false })));
       flywireGroup = group;
-      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), playbackToken: 0, frameTimer: null };
+      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), persistent: new Set(), playbackToken: 0, frameTimer: null };
       scene.add(group);
       updateFlywireStats(network);
       setMode(currentMode);
@@ -487,10 +487,12 @@
         const network = await response.json();
         if (!response.ok) throw new Error(network.detail?.error || `HTTP ${response.status}`);
         renderFlywireGraph(network);
+        console.info("[FlyWire] graph loaded", { neurons: network.neurons.length, synapses: network.synapses.length, dataset: network.metadata?.dataset });
         ui.flywireStatus.textContent = "Sub-rede carregada. Os pontos são somas de neurônios reais; as linhas são conexões agregadas do FAFB v783.";
         setBackend("FlyWire local", "ok");
         setMode(currentMode);
       } catch (error) {
+        console.error("[FlyWire] graph load failed", error);
         ui.flywireStatus.textContent = `Não foi possível carregar o FlyWire: ${error.message}`;
         setBackend("FlyWire indisponível");
         if (currentMode === "flywire") setMode("axobug");
@@ -519,12 +521,33 @@
       flywire.nodes.geometry.getAttribute("color").needsUpdate = true;
     }
 
+    function highlightPersistentFlywireSpikes(ids) {
+      if (!flywire.loaded || !flywire.colors) return;
+      const base = new THREE.Color(0x65f2ff);
+      const hot = new THREE.Color(0xffe18a);
+      flywire.flashes.clear();
+      for (let index = 0; index < flywire.colors.length; index += 3) {
+        flywire.colors[index] = base.r;
+        flywire.colors[index + 1] = base.g;
+        flywire.colors[index + 2] = base.b;
+      }
+      flywire.persistent = new Set(ids.map(id => String(id)));
+      flywire.persistent.forEach(id => {
+        const index = flywire.nodeIndex.get(id);
+        if (index === undefined) return;
+        flywire.colors[index * 3] = hot.r;
+        flywire.colors[index * 3 + 1] = hot.g;
+        flywire.colors[index * 3 + 2] = hot.b;
+      });
+      flywire.nodes.geometry.getAttribute("color").needsUpdate = true;
+    }
+
     function updateFlywireVisuals(now) {
       if (!flywire.loaded || !flywire.colors) return;
       const base = new THREE.Color(0x65f2ff);
       let changed = false;
       flywire.flashes.forEach((until, id) => {
-        if (until > now) return;
+        if (flywire.persistent.has(id) || until > now) return;
         const index = flywire.nodeIndex.get(id);
         if (index !== undefined) {
           flywire.colors[index * 3] = base.r;
@@ -570,6 +593,7 @@
       if (!flywire.loaded) await loadFlywireGraph();
       if (!flywire.loaded) return;
       cancelFlywirePlayback();
+      highlightPersistentFlywireSpikes([]);
       const count = clamp(Math.floor(Number(ui.flywireInputCount.value) || 8), 1, Math.min(64, flywire.network.neurons.length));
       const neuronIds = flywire.network.neurons.slice(0, count).map(neuron => String(neuron.id));
       ui.simulateFlywire.disabled = true;
@@ -585,12 +609,16 @@
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail?.error || `HTTP ${response.status}`);
         const frames = Array.isArray(result.frames) ? result.frames : [];
+        const spikeIds = [...new Set(frames.flatMap(frame => Array.isArray(frame.spikes) ? frame.spikes : []))];
+        highlightPersistentFlywireSpikes(spikeIds);
         updateFlywireStats(flywire.network, result);
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
-        ui.flywireStatus.textContent = `LIF local: ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios. A entrada é exploratória, não um estímulo biológico validado.`;
+        console.info("[FlyWire] LIF simulation", result.stats, { inputNeurons: neuronIds.length, frameCount: frames.length });
+        ui.flywireStatus.textContent = `LIF local: ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios. Os pontos amarelos ficam destacados até limpar a cena. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
       } catch (error) {
+        console.error("[FlyWire] simulation failed", error);
         ui.flywireStatus.textContent = `Falha na simulação local: ${error.message}`;
         setBackend("Erro no LIF local");
       } finally {
@@ -786,7 +814,7 @@
     ui.mode.addEventListener("change", () => setMode(ui.mode.value));
     ui.loadFlywire.addEventListener("click", loadFlywireGraph);
     ui.simulateFlywire.addEventListener("click", simulateFlywire);
-    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; flywire.flashes.clear(); if (flywire.colors) { const base = new THREE.Color(0x65f2ff); for (let index = 0; index < flywire.colors.length; index += 3) { flywire.colors[index] = base.r; flywire.colors[index + 1] = base.g; flywire.colors[index + 2] = base.b; } flywire.nodes.geometry.getAttribute("color").needsUpdate = true; } ui.flywireFrameChart.replaceChildren(); ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
+    ui.clear.addEventListener("click", () => { shadowRun.active = false; shadowRun.waiting = false; if (shadowObstacle) shadowObstacle.visible = false; behavior = { kind: "idle", started: 0, duration: 0, strength: 0 }; flywire.flashes.clear(); flywire.persistent.clear(); if (flywire.colors) { const base = new THREE.Color(0x65f2ff); for (let index = 0; index < flywire.colors.length; index += 3) { flywire.colors[index] = base.r; flywire.colors[index + 1] = base.g; flywire.colors[index + 2] = base.b; } flywire.nodes.geometry.getAttribute("color").needsUpdate = true; } ui.flywireFrameChart.replaceChildren(); ui.flywireSpikes.textContent = "—"; ui.status.textContent = currentMode === "flywire" ? "Simulação local limpa." : "Animação limpa. Escolha um experimento."; });
     function animate() { requestAnimationFrame(animate); const nowMs = performance.now(); const now = nowMs / 1000; controls?.update(); updateFlywireVisuals(nowMs); updateFly(now); updateShadowRun(now); renderer?.render(scene, camera); }
     initThree(); setMode("flywire"); checkBackend(); animate();
   </script>

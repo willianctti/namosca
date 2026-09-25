@@ -22,7 +22,8 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
 - **Axobug comparação** mantém os experimentos de estímulo e o Shadow Run
   existentes;
 - os spikes do LIF local são destacados em amarelo durante a reprodução dos
-  frames.
+  frames e permanecem visíveis até a limpeza da cena;
+- o botão de limpeza remove os destaques e o gráfico de frames.
 
 A entrada inicial do LIF local é exploratória: ela usa os primeiros
 neurônios de maior grau da sub-rede e ainda não representa um estímulo
