@@ -434,6 +434,11 @@
       flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"), flywireReachableDescending: $("flywireReachableDescending"), flywireShortestPath: $("flywireShortestPath"), showPaths: $("showPathsBtn"), pathInfo: $("flywirePathInfo"), pathDetails: $("flywirePathDetails"), ablateInhibitory: $("ablateInhibitory"), forcePathExcitatory: $("forcePathExcitatory"), pathNode: $("pathNodeSelect"), simulatePathNode: $("simulatePathNodeBtn"), localAnalysis: $("localAnalysis"), reportTable: $("reportTable"), reportEmpty: $("reportEmpty"), clearReport: $("clearReportBtn"), demoTrack: $("demoTrack"), demoStatus: $("demoStatus"), playDemo: $("playDemoBtn"), flyBodyDemo: $("flyBodyDemo"), flyBodyVisual: $("flyBodyVisual"),
       flywireInputCount: $("flywireInputCount"), flywireInputGroup: $("flywireInputGroup"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
+    // The controls panel uses backdrop-filter, which creates a containing block
+    // for fixed descendants. Move the fly card to the document root so it can
+    // truly dock in the upper-right corner.
+    const floatingFlyPanel = document.querySelector(".demo-panel");
+    if (floatingFlyPanel) document.body.appendChild(floatingFlyPanel);
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
     let behavior = { kind: "idle", started: 0, duration: 0, strength: 0 };
     let shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: 0, token: 0 };
