@@ -275,7 +275,8 @@
       </div>
       <div class="demo-panel">
         <h2>Demonstração de resposta</h2>
-        <div class="report-note">Proxy visual para atividade descendente. Não é uma animação de caminhada ou pulo validada.</div>
+        <div class="report-note">Atividade descendente real do modelo; a parte do corpo ainda não é identificada pelo FAFB.</div>
+        <div class="demo-disclaimer"><strong>Mapeamento de demonstração:</strong> Dm → pernas foi escolhido como hipótese visual. Não é uma atribuição do FlyWire nem uma medição de locomoção.</div>
         <div class="fly-body-demo" id="flyBodyDemo" aria-label="Diagrama demonstrativo de uma mosca">
           <svg viewBox="0 0 240 150" role="img" aria-label="Mosca estilizada com pernas destacadas">
             <ellipse class="fly-demo-wings" cx="120" cy="76" rx="86" ry="30" />
@@ -291,7 +292,7 @@
         </div>
         <div class="demo-track" id="demoTrack"><div class="demo-beacon" id="demoBeacon">D</div></div>
         <div id="demoStatus" class="demo-status">Aguardando uma simulação com atividade em Dm.</div>
-        <div class="demo-disclaimer">Contrafactual computacional: não representa comportamento biológico comprovado.</div>
+        <div class="demo-disclaimer">A atividade é real no modelo; o corpo, músculos e comportamento ainda não foram identificados.</div>
         <button id="playDemoBtn" class="secondary">Reproduzir resposta demonstrativa</button>
       </div>
     </div>
@@ -614,8 +615,8 @@
     function updateBehaviorDemo(dmActive) {
       lastDmActive = Number(dmActive) || 0;
       ui.demoStatus.textContent = lastDmActive > 0
-        ? `Há ${lastDmActive} candidato(s) Dm ativo(s). Use o botão para reproduzir o proxy visual.`
-        : "Nenhum Dm ativo nesta condição; o proxy de resposta ficará parado.";
+        ? `Há ${lastDmActive} candidato(s) Dm ativo(s). O corpo real continua desconhecido; a animação usa “pernas” apenas como hipótese visual.`
+        : "Nenhum Dm ativo nesta condição; nenhum proxy será animado.";
     }
 
     function playBehaviorDemo() {
@@ -626,9 +627,9 @@
       if (lastDmActive > 0) {
         ui.demoTrack.classList.add("active");
         ui.flyBodyDemo.classList.add("active");
-        ui.demoStatus.textContent = `Proxy de resposta descendente: ${lastDmActive} Dm ativo(s) → pernas destacadas. Não é andar biologicamente validado.`;
+        ui.demoStatus.textContent = `Proxy visual: ${lastDmActive} Dm ativo(s) → pernas destacadas por hipótese. O FAFB não informa qual parte do corpo real seria ativada.`;
       } else {
-        ui.demoStatus.textContent = "Sem Dm ativo: nenhum proxy de resposta será animado.";
+        ui.demoStatus.textContent = "Sem Dm ativo: nenhum proxy visual será animado.";
       }
     }
     function clearTopologicalPaths() {
