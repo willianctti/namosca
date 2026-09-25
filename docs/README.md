@@ -1,5 +1,10 @@
 # Guia completo do NaMosca
 
+## Plano da placa real
+
+O plano para conectar uma placa ESP32, um sensor DHT11 e três LEDs ao NaMosca está em [`HARDWARE_PLAN.md`](HARDWARE_PLAN.md).
+
+
 Este guia explica o projeto inteiro em ordem: de onde vêm os dados, como o backend os transforma, como o frontend mostra e como os sinais são ligados às partes do corpo.
 
 ## 1. O que é o NaMosca

@@ -442,4 +442,10 @@ O guia detallado do projeto está em:
 docs/README.md
 ```
 
-Ele explica o fluxo de dados, o backend, o frontend, o LIF, a ponte entre datasets e as limitações científicas do modelo.
+O plano para a placa real ESP32 com sensor DHT11 e LEDs está em:
+
+```text
+docs/HARDWARE_PLAN.md
+```
+
+Ele inclui o prompt pronto para o GPT, as ligações, o código inicial e os próximos passos para conectar o hardware ao backend.
