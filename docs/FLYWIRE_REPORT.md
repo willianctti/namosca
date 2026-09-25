@@ -146,7 +146,43 @@ do gânglio ventral. Ainda não é um mapa completo de músculos: as colunas
 conexões também está vazio. O próximo nível exige o atlas de projeção
 muscular do FANC e a ponte morfológica entre FAFB e MANC.
 
-## Demonstração prática de locomoção
+## Rotas descendente → motor
+
+A ponte MCNS foi cruzada com as conexões do MANC pelo comando:
+
+```bash
+python backend/tools/build_motor_routes.py \\
+  --bridge data/flywire/mcns_manc_bridge.json \\
+  --manc-attributes /home/mindwill/Downloads/neurons(1).csv.gz \\
+  --manc-connections /home/mindwill/Downloads/connections_princeton.csv.gz \\
+  --output data/flywire/dn_motor_routes.json
+```
+
+Resultado da primeira passagem, usando apenas conexões diretas:
+
+```text
+1.247 descendentes com correspondência MANC
+658 motores com correspondência MANC
+1.053 descendentes com rota direta para algum motor
+23.070 linhas de conexão
+212.407 sinapses agregadas
+```
+
+As conexões diretas alcançaram:
+
+```text
+abdômen: 5.283 arestas
+asas: 3.757
+perna dianteira: 3.386
+perna traseira: 1.906
+perna do meio: 1.730
+```
+
+Isso já fornece candidatos reais para acionar as pernas no modelo. Ainda são
+rotas diretas e agregadas: não incluem todos os caminhos premotores, não
+provam um comportamento específico e ainda não são um mapa completo de
+músculo/articulação.
+
 
 O frontend possui um diagrama demonstrativo de uma mosca com seis pernas. Quando
 uma execução registra Dm ativos, as pernas são destacadas e um proxy de resposta

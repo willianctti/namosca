@@ -40,4 +40,5 @@ Use `tools/inspect_flywire.py` para inspecionar os arquivos,
 `tools/prepare_manc_motor_catalog.py` para catalogar neurônios motores e
 descendentes do gânglio ventral por streaming, e
 `tools/prepare_mcns_bridge.py` para gerar a ponte MCNS → FAFB/MANC a partir
-das anotações Feather.
+das anotações Feather, e `tools/build_motor_routes.py` para cruzar essa ponte
+com as conexões MANC e listar rotas descendente → motor.
