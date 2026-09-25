@@ -1,380 +1,360 @@
 # NaMosca
 
-## Explorando um cérebro de *Drosophila melanogaster* através de simulação neural e comportamento emergente
+## Simulador neural e neuromecânico de uma mosca
 
-**NaMosca** é um laboratório experimental e visual para explorar uma pergunta:
+O NaMosca usa dados reais de neurônios de *Drosophila* para observar como uma rede cerebral pode ser simulada e conectada a uma representação visual do corpo.
 
-> **O que acontece quando a arquitetura neural de uma mosca real é transformada em uma simulação computacional e conectada a um ambiente interativo?**
-
-O projeto utiliza a **Neuro API da Axobug**, que disponibiliza respostas de um modelo computacional baseado no **FlyWire v783**, utilizando uma rede de neurônios *Leaky Integrate-and-Fire* (LIF).
-
-A atividade neural retornada pela simulação é transformada em comandos comportamentais e visualizada através de uma *Drosophila* 3D.
-
-O objetivo do projeto não é criar uma IA que imite uma mosca, mas explorar a relação entre:
+O caminho principal é:
 
 ```text
-connectome -> atividade neural -> sinais motores -> comportamento
+FAFB → MCNS → MANC → LIF → resposta neural → sistema corporal
 ```
 
-![NaMosca — interface do projeto](docs/screenshot.png)
+O projeto usa:
 
-> **Nota importante:** a animação é uma visualização dos comandos `drive`
-> devolvidos pelo modelo. Ela não afirma que um estímulo sempre produz aquele
-> comportamento em uma mosca biológica real.
+- conectoma do cérebro do FAFB v783;
+- catálogo de neurônios do MANC v1.2.1;
+- conectoma do cérebro e gânglio ventral do MCNS v1.0;
+- modelo matemático LIF local;
+- mapa de rotas `Dm → DN → MN`;
+- frontend para visualizar os spikes e as partes do corpo.
 
----
+O frontend não usa mais a API do Axobug. A simulação principal é feita localmente com a rede real carregada pelo backend.
 
-## Motivação
+## O que o projeto tenta responder
 
-Nos últimos anos, a neurociência computacional passou de modelos altamente abstratos para reconstruções cada vez mais detalhadas de circuitos biológicos reais.
-
-O projeto **FlyWire** representa um dos principais exemplos dessa evolução: a reconstrução do conectoma de uma *Drosophila melanogaster* adulta identificou aproximadamente **139 mil neurônios e milhões de conexões sinápticas**.
-
-O NaMosca parte dessa evolução tecnológica para criar uma interface experimental acessível.
-
-Em vez de observar apenas uma tabela de neurônios ou uma representação estática do conectoma, o projeto permite experimentar estímulos e observar como as respostas produzidas pelo modelo podem ser convertidas em comportamento visual.
-
----
-
-## Arquitetura
-
-O fluxo principal do NaMosca é:
+A pergunta central é:
 
 ```text
-                         ESTIMULO
-                            |
-                            v
-                    +----------------+
-                    |    NaMosca     |
-                    |    Frontend    |
-                    +-------+--------+
-                            |
-                            | HTTP
-                            v
-                    +----------------+
-                    |     FastAPI    |
-                    |     Backend    |
-                    +-------+--------+
-                            |
-                            | POST
-                            v
-                    +----------------+
-                    |     Axobug     |
-                    |   Neuro API    |
-                    +-------+--------+
-                            |
-                            v
-                    Modelo baseado no FlyWire
-                            |
-                            v
-                    Rede LIF com spikes
-                            |
-                            v
-                    Atividade neural
-                       /         \
-                      v           v
-                 channels        drive
-                      |           |
-                      |           v
-                      |      comportamento
-                      |           |
-                      +-----+-----+
-                            |
-                            v
-                     Drosophila 3D
+O que acontece quando um circuito neural real é transformado em uma simulação computacional?
 ```
 
-A aplicação não executa o conectoma completo do FlyWire localmente.
+O projeto permite observar:
 
-Nesta versão, a simulação neural principal é realizada pelo serviço da Axobug. O NaMosca funciona como uma camada experimental e de visualização sobre essa infraestrutura.
+- quais neurônicos recebem spikes;
+- quais tipos `Dm` são atingidos;
+- quais caminhos `Dm → DN → MN` existem;
+- quais nervos e sistemas corporais são alcançados;
+- como essa informação pode aparecer no corpo virtual.
 
----
+A animação do corpo é uma forma de visualizing os resultados. Ela ainda não é uma simulação muscular completa.
 
-## O que acontece durante um experimento?
+## IMPORTANTE: o que é real e o que é modelo
 
-Um experimento começa com um estímulo.
+### Dado real
 
-Por exemplo:
+Os seguintes dados vêm de datasets publicados:
+
+- conexões entre neurônios;
+- tipos celulares;
+- identificadores de tipos no FAFB, MCNS e MANC;
+- conexões descendente → motor;
+- nervos;
+- classes de neurônios motores;
+- valores de `syn_count`, que são a quantidade agregada de contatos sinápticos de uma conexão.
+
+### Modelo computacional
+
+O projeto usa um modelo LIF local. LIF significa `Leaky Integrate-and-Fire`, ou “integração com vazamento e disparo”.
+
+Em termos simples, cada neurônio:
+
+1. acumula atividade;
+2. perde um pouco dessa atividade com o tempo;
+3. produz um spike quando passa de um limite.
+
+O peso da conexão é calculado a partir do `syn_count`. Isso é uma escolha computacional. O `syn_count` não é automaticamente a força elétrica da sinapse.
+
+### Hipótese visual
+
+A conversão de spike em movimento é simplificada.
+
+Quando o mapa encontra uma rota para uma perna, a interface pode destacar a perna. Isso significa:
+
+```text
+existe uma rota conectômica para aquele sistema
+```
+
+Não significa automaticamente:
+
+```text
+a mosca real produziria exatamente aquele movimento
+```
+
+Ainda não existe um atlas muscular completo `MN → músculo → articulação` ligado ao modelo.
+
+## Os datasets
+
+### FAFB v783
+
+O FAFB é o conectoma do cérebro de uma mosca adulta. O projeto usa uma sub-rede inicial:
+
+```text
+800 neurônios
+4.000 conexões
+```
+
+O backend usa essa sub-rede para a simulação LIF.
+
+### MANC v1.2.1
+
+O MANC contém informações do gânglio ventral, incluindo os neurônios motores e os nervos do corpo.
+
+O projeto usa campos como:
+
+- `Super Class`;
+- `Class`;
+- `Sub Class`;
+- `Nerve`;
+- `Primary Cell Type`.
+
+O campo `Nerve` ajuda a reconhecer sistemas como:
+
+- `ProLN`: perna dianteira;
+- `MesoLN`: perna do meio;
+- `MetaLN`: perna traseira;
+- `ADMN` e `PDM`: asas;
+- `AbN`: abdômen.
+
+### MCNS v1.0
+
+O MCNS reúne cérebro e gânglio ventral. Ele é usado como ponte porque possui campos de correspondência:
+
+- `flywireType`: tipo correspondente no FAFB;
+- `mancType`: tipo correspondente no MANC;
+- `mancBodyid`: identificador do corpo no MANC;
+- `entryNerve`: nervo de entrada;
+- `exitNerve`: nervo de saída.
+
+O MCNS também fornece um conectoma completo, usado para procurar caminhos:
+
+```text
+Dm → DN → MN
+```
+
+## Como os dados são processados
+
+Os arquivos grandes ficam fora do Git, normalmente em:
+
+```text
+/home/mindwill/Downloads
+```
+
+Exemplos:
+
+```text
+sk_lod1_783_healed.zip
+neurons(1).csv.gz
+connections_princeton.csv.gz
+body-annotations-male-cns-v1.0-minconf-0.5.feather
+body-neurotransmitters-male-cns-v1.0.feather
+connectome-weights-male-cns-v1.0-minconf-0.5.feather
+```
+
+O arquivo de skeletons do FAFB tem cerca de 13 GB. Ele não entra no repositório porque é grande demais para o Git.
+
+Os arquivos processados ficam em:
+
+```text
+data/flywire
+```
+
+Os principais são:
+
+```text
+me_left_flywire_graph.json
+mcns_manc_bridge.json
+dn_motor_routes.json
+motor_output_map.json
+dm_dn_mn_routes.json
+```
+
+Esses arquivos são gerados localmente e não precisam ser versionados.
+
+## O caminho da ponte
+
+A ponte não une os identificadores numéricos entre os datasets. Os root IDs são diferentes porque os datasets foram reconstruídos de indivíduos diferentes.
+
+O caminho usado é:
+
+```text
+tipo celular no FAFB
+        ↓
+flywireType no MCNS
+        ↓
+bodyId no MCNS
+        ↓
+mancType e mancBodyid
+        ↓
+neurônio no MANC
+```
+
+Depois, o conectoma do MANC ou do MCNS é usado para procurar conexões entre esses neurônios.
+
+## Como o backend funciona
+
+O backend usa FastAPI e fica normalmente na porta 8000.
+
+### Carregar o grafo
+
+```text
+GET /api/network?source=flywire
+```
+
+A resposta JSON tem dois grupos principais:
 
 ```json
 {
-  "stimulus": "loom",
-  "intensity": 1,
-  "duration_ms": 100,
-  "seed": 42
+  "neurons": [
+    {
+      "id": "123",
+      "cell_type": "Dm12",
+      "x": 0.1,
+      "y": 0.2,
+      "z": 0.3
+    }
+  ],
+  "synapses": [
+    {
+      "source": "123",
+      "target": "456",
+      "weight": 2.3,
+      "synapse_count": 10,
+      "inhibitory": false
+    }
+  ]
 }
 ```
 
-O backend envia o estímulo para a Neuro API.
+### Executar a simulação
 
-A API retorna informações como:
+```text
+POST /api/simulate
+```
+
+Exemplo derequisição:
 
 ```json
 {
-  "model": "flywire-v783-pruned-lif-v1",
-  "total_spikes": 5763,
-  "responding_neurons": 682,
-  "channels": {
-    "walk": 3.33,
-    "escape": 185
+  "graph": {
+    "region": "optic_lobes",
+    "source": "flywire",
+    "max_neurons": 800,
+    "max_synapses": 4000
   },
-  "drive": {
-    "walk": 0.42,
-    "escape": 1
+  "config": {
+    "duration_ms": 500,
+    "dt_ms": 5,
+    "frame_interval_ms": 50
+  },
+  "stimulus": {
+    "neuron_ids": ["123", "456"],
+    "intensity": 2,
+    "duration_ms": 100
+  },
+  "engine": "lif"
+}
+```
+
+A resposta inclui:
+
+- `frames`: trechos da simulação com spikes;
+- `stats`: totais da execução;
+- `motor_output`: sistemas corporais alcançados pelo mapa.
+
+Exemplo simplificado:
+
+```json
+{
+  "engine_used": "lif",
+  "stats": {
+    "total_spikes": 69,
+    "responding_neurons": 8
+  },
+  "motor_output": {
+    "active_dm_types": ["Dm12"],
+    "systems": {
+      "hind_leg": 1200
+    }
   }
 }
 ```
 
-O NaMosca então utiliza esses valores para controlar a representação visual da mosca.
+### Resposta motora
 
-Por exemplo:
-
-```text
-loom
-  |
-  v
-atividade neural
-  |
-  v
-escape = 1.0
-  |
-  v
-pulo
-```
-
-É importante distinguir:
-
-- **`channels`**: atividade neural retornada pelo modelo;
-- **`spikes`**: eventos de disparo produzidos pela simulação;
-- **`drive`**: sinais comportamentais normalizados disponibilizados pela API.
-
-O comportamento visual apresentado pelo NaMosca é uma **interpretação computacional da saída do modelo**, e não uma afirmação de que uma mosca biológica necessariamente apresentaria exatamente aquele comportamento diante do mesmo estímulo.
-
----
-
-## Estímulos
-
-O projeto permite experimentar diferentes estímulos disponibilizados pela API:
-
-| Estímulo | ID | Experimento |
-|---|---|---|
-| Doce | `sugar` | alimentação |
-| Sombra | `loom` | escape |
-| Alimento | `food` | locomoção |
-| Toque | `touch` | resposta sensorial |
-| Som | `song` | resposta auditiva |
-| Feromônio | `pheromone` | resposta olfativa |
-| Cor | `colour` | resposta visual |
-| Umidade | `humid` | resposta sensorial |
-| Temperatura | `heat` | resposta sensorial |
-| Amargo | `bitter` | gustação |
-| Controle | `none` | ausência de estímulo |
-
-Para experimentos comparativos, o mesmo `seed` pode ser utilizado enquanto apenas o estímulo ou sua intensidade é alterado.
-
-Cada consulta envia um único estímulo por vez.
-
-A animação não segue uma tabela fixa de comportamento para cada estímulo. Ela é interpretada a partir dos valores `drive` retornados pela API.
-
----
-
-## Shadow Run
-
-O **Shadow Run** é o experimento principal do projeto.
-
-Ele reproduz uma situação simples de ameaça:
+O arquivo `dm_dn_mn_routes.json` contém caminhos:
 
 ```text
-mosca correndo -> sombra se aproximando ->loom
-                                      |
-                                      v
-                              atividade neural
-                                      |
-                                      v
-                                drive.escape
-                                      |
-                                      v
-                                   pulo
+Dm → DN → MN
 ```
 
-O experimento funciona da seguinte maneira:
+O backend procura o tipo do neurônio que produziu spike e consulta esse mapa.
 
-1. `food` estabelece o estado de locomoção;
-2. uma sombra se aproxima da mosca;
-3. o estímulo `loom` é enviado;
-4. a resposta `escape` é obtida;
-5. o valor retornado controla a intensidade do salto;
-6. o processo é repetido para múltiplos obstáculos.
+O sistema pode classificar a resposta como:
 
-Uma execução completa utiliza seis chamadas à API:
+- `front_leg`: perna dianteira;
+- `middle_leg`: perna do meio;
+- `hind_leg`: perna traseira;
+- `wing`: asa;
+- `abdomen`: abdômen;
+- `haltere`: halter;
+- `unclassified`: sem sistema classificado.
+
+## Como o frontend funciona
+
+O frontend fica normalmente na porta 8080.
+
+Ele:
+
+- mostra o grafo de neurônios;
+- mostra conexões;
+- destaca os pontos que produziram spike;
+- mostra candidatos `Dm`;
+- mostra os números principais;
+- mostra a rota `Dm → DN → MN`, quando existe;
+- mostra a mosca no canto superior direito;
+- destaca o sistema corporal encontrado.
+
+A simulação é iniciada pelo botão:
 
 ```text
-1 x food
-5 x loom
+Simular LIF local
 ```
 
-A interface apresenta:
+Os números detalhados da sub-rede ficam em uma seção expansível chamada:
 
-- quantidade de sombras superadas;
-- intensidade da resposta de escape;
-- número de chamadas realizadas;
-- atividade neural;
-- resposta JSON;
-- comportamento da mosca em 3D.
-
-A simulação da corrida e da animação é local. A resposta neural e os valores de `drive` vêm da API.
-
----
-
-## O que é real e o que é simulado?
-
-Esta distinção é fundamental para o projeto.
-
-### Dados e modelos externos
-
-O projeto utiliza:
-
-- dados e nomenclaturas derivados do ecossistema FlyWire;
-- snapshots estáticos do FAFB v783 para a primeira sub-rede local;
-- modelo computacional disponibilizado pela Axobug enquanto a migração local
-  está em andamento;
-- arquitetura neural baseada em LIF;
-- respostas neurais produzidas pela Neuro API.
-
-### Implementação do NaMosca
-
-O projeto implementa:
-
-- interface experimental;
-- seleção de estímulos;
-- comunicação com a API;
-- backend/proxy FastAPI;
-- ingestão em streaming dos exports FAFB;
-- interpretação dos sinais `drive`;
-- visualização 3D;
-- Shadow Run;
-- histórico de experimentos;
-- visualização das respostas JSON;
-- gráficos de atividade.
-
-### O que o projeto não afirma
-
-O NaMosca não afirma que:
-
-- o cérebro completo da mosca está sendo executado localmente;
-- todos os neurônios e conexões do FAFB estão sendo visualizados no frontend;
-- o comportamento visual reproduz fielmente uma mosca biológica;
-- `drive.escape = 1.0` representa diretamente uma variável biológica mensurada;
-- uma única simulação computacional constitui uma reprodução completa do comportamento animal.
-
-Essas limitações são importantes para manter a distinção entre **dados biológicos, modelo computacional e visualização experimental**.
-
-## Primeira sub-rede FlyWire local
-
-A ingestão dos produtos estáticos do FAFB v783 já foi implementada. A
-primeira sub-rede gerada contém 800 neurônios e 4.000 conexões do neuropilo
-`ME_L`, com:
-
-- posições dos somas extraídas dos arquivos SWC;
-- `root_id` como chave de junção;
-- tipos celulares do `consolidated_cell_types.csv.gz`;
-- previsões de neurotransmissor do `neurons.csv.gz`;
-- arestas e contagens sinápticas do FlyWire.
-
-O JSON gerado está em `data/flywire/me_left_flywire_graph.json` e é ignorado
-pelo Git. O backend carrega o arquivo, o frontend exibe os pontos e as
-conexões, e o LIF local pode ser executado diretamente no navegador. A
-conversão de `syn_count` para peso e o atraso de 1 ms são hipóteses
-computacionais explícitas, não medidas sinápticas diretas.
-
-O comando de preparação e a validação dos arquivos estão em
-[`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
-
-## Relatório do circuito e glossário
-
-O protocolo congelado da primeirasub-rede, os resultados das condições
-`Pm`, `LMa`, `MTe52`, a Ablação e a contrafactual estão registrados em
-[`docs/FLYWIRE_REPORT.md`](docs/FLYWIRE_REPORT.md).
-
-O frontend agora também mantém um relatório local das execuções, destaca
-DMs com spike e oferece uma demonstração visual de resposta descendente com
-um diagrama de mosca e pernas destacados. Essa demonstração é um proxy
-computacional explicitamente não biológico; ela não representa caminhada,
-pulo ou escape validados.
-
-| Condição | Spikes | Dm ativos |
-|---|---:|---:|
-| Pm baseline | 69 | 0 |
-| Pm sem inibição | 160 | 0 |
-| LMa2 isolado | 20 | 0 |
-| MTe52 isolado | 493 | 6 |
-| LMa2 com aresta forçada | 333 | 6 |
-
-A leitura correta é: o modelo local encontrou um gargalo computacional na
-aresta `LMa2 → MTe52`. A leitura incorreta seria afirmar que isso já prova
-comportamento de pulo ou fuga.
-
-Para entender o fluxo completo, veja [`docs/README.md`](docs/README.md): ele explica o frontend, o backend, a origem dos dados, o retorno JSON, o cruzamento dos datasets e a ligação com as partes do corpo.
-
-A ponte inicial com o MANC também já foi processada: 737 neurônios motores,
-1.328 descendentes e 25.818 linhas de conexão descendente → motor foram
-catalogadas. O MCNS v1.0 também foi validado e fornece as colunas
-`flywireType`, `mancType`, `mancBodyid`, `entryNerve` e `exitNerve`; a ponte
-local está em `data/flywire/mcns_manc_bridge.json`. As colunas de corpo e
-função do MANC estão vazias; o atlas muscular ainda é necessário para ligar
-um MN a um músculo específico.
-
-Termos usados no projeto:
-
-- **GABA:** neurotransmissor geralmente inibitório; no LIF local funciona
-  como peso negativo;
-- **ACH:** acetilcolina, tratada como conexão não inibitória;
-- **OCT:** octopamina, também tratada como não inibitória;
-- **syn_count:** quantidade agregada de contatos sinápticos em uma aresta;
-- **Dm:** família de tipos celulares descendentes, não sinônimo automático
-  de músculo motor;
-- **LIF:** modelo matemático simplificado de neurônio;
-- **ablação:** retirada controlada de um efeito do modelo;
-- **contrafactual:** teste computacional que altera uma hipótese para medir
-  sua sensibilidade.
-
----
-
-## Executando localmente
-
-### Requisitos
-
-- Python 3.11+
-- pip
-- navegador moderno
-
-### 1. Clone o projeto
-
-```bash
-git clone https://github.com/willianctti/namosca.git
-cd namosca
+```text
+Ver números da sub-rede
 ```
 
-### 2. Inicie o backend
+As opções de caminhos e nó isolado também ficam escondidas para manter a tela principal simples.
+
+O botão:
+
+```text
+Limpar animação
+```
+
+para os frames, limpa os spikes destacados e remove o destaque das partes do corpo.
+
+## Como executar
+
+### 1. Instalar as dependências
 
 ```bash
 cd backend
-
-python3 -m venv .venv
-source .venv/bin/activate
-
-python -m pip install -r requirements.txt
-
-python main.py
+.venv/bin/pip install -r requirements.txt
 ```
 
-O backend estará disponível em:
+### 2. Iniciar o backend
 
-```text
-http://localhost:8000
+Na raiz do projeto:
+
+```bash
+backend/.venv/bin/uvicorn app.main:app --app-dir backend --reload
 ```
 
-### 3. Inicie o frontend
+### 3. Iniciar o frontend
 
 Em outro terminal:
 
@@ -383,337 +363,83 @@ cd frontend
 python3 -m http.server 8080
 ```
 
-Acesse:
+Abra:
 
 ```text
 http://localhost:8080
 ```
 
-A pasta `frontend` é estática e não precisa de Node ou etapa de build.
-
----
-
-## API local
-
-### Health check
-
-```bash
-curl http://localhost:8000/api/health
-```
-
-### Providers
-
-```bash
-curl http://localhost:8000/api/providers
-```
-
-### Executar um estímulo
-
-```bash
-curl -X POST \
-  'http://localhost:8000/api/axobug/run?view=drive' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "stimulus": "loom",
-    "intensity": 1,
-    "duration_ms": 100,
-    "seed": 42
-  }'
-```
-
-### Endpoints
-
-| Método | Endpoint | Função |
-|---|---|---|
-| `GET` | `/api/health` | saúde do backend |
-| `GET` | `/api/providers` | fontes disponíveis |
-| `POST` | `/api/axobug/run` | chamada real à Neuro API |
-| `GET` | `/api/network` | reservado para dados FlyWire |
-| `WS` | `/ws/simulation` | reservado para integração futura |
-
----
-
-## Reprodutibilidade
-
-Um dos objetivos futuros do projeto é tornar os experimentos progressivamente mais reprodutíveis.
-
-Atualmente, alguns parâmetros podem ser controlados diretamente:
+## Estrutura do projeto
 
 ```text
-stimulus
-intensity
-duration_ms
-seed
+backend/
+├── app/
+│   ├── main.py
+│   ├── simulation.py
+│   ├── schemas.py
+│   ├── realtime.py
+│   ├── providers/
+│   ├── services/
+│   └── motor_output.py
+├── tools/
+│   ├── prepare_flywire_graph.py
+│   ├── prepare_manc_motor_catalog.py
+│   ├── prepare_mcns_bridge.py
+│   ├── build_motor_routes.py
+│   ├── build_mcns_dm_routes.py
+│   └── summarize_motor_output.py
+├── tests/
+└── requirements.txt
+
+frontend/
+└── index.html
+
+data/flywire/
+└── arquivos processados locais
+
+docs/
+└── README.md
 ```
-
-O uso de um `seed` fixo permite comparar diferentes estímulos sob condições equivalentes, quando suportado pelo modelo/API.
-
-Experimentos futuros deverão registrar também:
-
-- versão do modelo;
-- versão dos dados do connectome;
-- parâmetros da simulação;
-- timestamp;
-- número de neurônios responsivos;
-- número de spikes;
-- sinais de saída;
-- condições iniciais;
-- resultados comportamentais.
-
-O mapa 3D de neurônios e conexões reais já está disponível no modo FlyWire
-local para a primeira sub-rede `ME_L`. O guia de preparação e ingestão está
-em [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
-
----
-
-## Roadmap
-
-O NaMosca foi pensado como uma plataforma experimental incremental.
-
-### Fase 1 — Interface experimental
-
-- [x] Integração com a Neuro API
-- [x] Backend FastAPI
-- [x] Visualização 3D
-- [x] Estímulos
-- [x] Shadow Run
-- [x] Histórico de experimentos
-- [x] Visualização de respostas
-- [x] Gráficos de atividade
-
-### Fase 2 — Connectome
-
-- [x] Obter dados estáticos autorizados do FlyWire
-- [x] Parser dos dados oficiais para sub-redes
-- [x] Mapear root IDs
-- [x] Mapear posições dos somas
-- [x] Mapear conexões e tipos celulares
-- [x] Visualizar neurônios em 3D
-- [x] Visualizar conexões
-- [ ] Explorar sub-redes específicas
-
-### Fase 3 — Simulação local
-
-- [x] Implementar simulação LIF local sobre sub-redes reais
-- [x] Executar a primeira sub-rede do connectome
-- [ ] Comparar resultados locais com a API
-- [x] Instrumentar spikes individualmente no frontend
-- [ ] Medir desempenho
-- [ ] Reproduzir circuitos motores específicos
-
-### Fase 4 — Neurociência computacional experimental
-
-- [x] Registrar baseline, ablação e contrafactual
-- [x] Exibir atividade descendente e caminhos topológicos
-- [x] Criar proxy visual de resposta, identificado como não biológico
-- [ ] Associar circuitos a comportamentos
-- [ ] Experimentar ablação de neurônios
-- [ ] Comparar diferentes modelos neuronais
-- [ ] Investigar plasticidade
-- [ ] Estudar propagação de atividade
-- [ ] Criar experimentos reproduzíveis
-
-### Fase 5 — Sistemas incorporados
-
-Uma direção de pesquisa futura é conectar a atividade neural simulada a um agente físico:
-
-```text
-        ambiente
-           |
-           v
-       sensores
-           |
-           v
-      connectome
-           |
-         spikes
-           |
-           v
-      neurônios motores
-           |
-           v
-        atuadores
-           |
-           v
-         robo
-           |
-           +----------> ambiente
-```
-
-Essa arquitetura permitiria investigar a transição:
-
-```text
-connectome -> dinâmica neural -> controle motor -> comportamento físico
-```
-
----
-
-## Direção de pesquisa
-
-O NaMosca também serve como base experimental para investigar uma questão maior:
-
-> **Até que ponto a estrutura de um connectome biológico pode ser convertida em um sistema computacional capaz de produzir comportamento?**
-
-O projeto está inserido em uma interseção entre:
-
-- Connectomics
-- Computational Neuroscience
-- Spiking Neural Networks
-- Neuromorphic Computing
-- Artificial Life
-- Robotics
-- Embodied AI
-
-Uma linha futura de investigação é comparar diferentes níveis de abstração:
-
-```text
-        CONNECTOME
-            |
-            v
-     neurônios LIF
-            |
-            v
-      spikes / SNN
-            |
-            v
-     circuitos motores
-            |
-            v
-       comportamento
-```
-
-Isso permite estudar não apenas **quantos neurônios existem**, mas como a **organização das conexões** influencia o comportamento produzido.
-
----
-
-## Limitações
-
-O NaMosca é um projeto experimental.
-
-Atualmente:
-
-- a interface principal e o Shadow Run ainda usam a infraestrutura da Axobug;
-- o modo FlyWire local visualiza uma sub-rede real, mas a entrada inicial é exploratória e ainda não representa um estímulo sensorial validado;
-- a visualização 3D usa pontos dos somas e conexões agregadas, não toda a morfologia nem cada sinapse individual;
-- o peso sináptico e o atraso usados na primeira sub-rede são hipóteses computacionais, não medidas biológicas diretas;
-- os sinais `drive` são abstrações fornecidas pelo modelo Axobug;
-- comportamento visual não deve ser interpretado como validação biológica;
-- resultados do modelo não substituem experimentos com organismos vivos.
-
-Essas limitações fazem parte da metodologia e devem ser consideradas em qualquer análise científica baseada no projeto.
-
----
-
-## Estrutura
-
-```text
-namosca/
-|
-|-- backend/
-|   |-- main.py
-|   |-- app/
-|   |   |-- main.py
-|   |   |-- providers/
-|   |   |   |-- axobug.py
-|   |   |   `-- flywire.py
-|   |   |-- services/
-|   |   `-- simulation.py
-|   |
-|   |-- tools/
-|   |   |-- inspect_flywire.py
-|   |   |-- prepare_flywire_graph.py
-|   |   `-- prepare_manc_motor_catalog.py
-|   |
-|   `-- tests/
-|
-|-- frontend/
-|   |-- index.html
-|   `-- README.md
-|
-|-- docs/
-|   |-- API.md
-|   |-- FLYWIRE_PREPARATION.md
-|   `-- FLYWIRE_REPORT.md
-|
-|-- LICENSE
-`-- README.md
-```
-
----
-
-## Deploy
-
-### Frontend
-
-A pasta `frontend` pode ser publicada em GitHub Pages, Vercel ou Netlify.
-
-Para usar um backend em outro domínio, configure no HTML:
-
-```html
-<meta name="flybrain-api" content="https://api.seudominio.com">
-```
-
-### Backend
-
-O backend Python precisa de um servidor ASGI separado, como Render, Railway, Fly.io, Cloud Run ou uma VM.
-
-O GitHub Pages hospeda apenas o frontend estático; não executa FastAPI.
-
----
 
 ## Testes
 
+A partir da pasta `backend`:
+
 ```bash
-cd backend
-source .venv/bin/activate
-pytest -q
+.venv/bin/pytest -q
 ```
 
----
+Resultado esperado:
 
-## Referências
+```text
+9 passed
+```
 
-- **FlyWire** — plataforma de reconstrução e exploração de conectomas.
-- **Drosophila melanogaster whole-brain connectome** — reconstrução estrutural do cérebro adulto da mosca.
-- **Axobug Neuro API** — serviço utilizado pelo projeto para execução do modelo neural.
-- **Spiking Neural Networks** — modelos computacionais baseados em eventos de disparo neuronal.
-- **Leaky Integrate-and-Fire (LIF)** — modelo simplificado de dinâmica neuronal.
+## Limitações atuais
 
-As referências científicas completas, versões dos datasets e detalhes metodológicos serão documentados na publicação científica associada ao projeto.
+- o backend simula uma sub-rede, não o FAFB inteiro;
+- o LIF é um modelo simples;
+- `syn_count` é transformado em peso por uma regra computacional;
+- o mapa usa神经系统 e tipos celulares, mas não um atlas muscular completo;
+- a resposta do corpo é uma visualização conectômica;
+- não existe ainda validação completa com resposta muscular e comportamento observado;
+- a correspondência entre datasets é feita por tipos e informações anatômicas, não por root IDs compartilhados.
 
----
+## Próximos passos
 
-## Artigo científico
+1. testar diferentes populações de entrada;
+2. validar as rotas `Dm → DN → MN` com os dados do MCNS;
+3. encontrar ou construir um mapa `MN → músculo`;
+4. adicionar anatomia muscular e articulações;
+5. comparar a simulação com dados comportamentais;
+6. substituir gradualmente a animação simplificada por uma neuromecânica com músculos.
 
-O NaMosca está sendo desenvolvido também como uma plataforma experimental para um estudo sobre:
+## Documentação completa
 
-**simulação de conectomas biológicos, redes neurais spiking e perspectivas de sistemas neurais incorporados.**
+O guia detallado do projeto está em:
 
-O artigo pretende discutir:
+```text
+docs/README.md
+```
 
-1. reconstrução de conectomas;
-2. simulação de atividade neural;
-3. modelos LIF e SNN;
-4. relação entre estrutura neural e comportamento;
-5. limitações computacionais;
-6. neuromorphic computing;
-7. escalabilidade para sistemas neurais maiores;
-8. perspectivas para connectomas de mamíferos;
-9. integração entre cérebro simulado e robótica;
-10. possíveis caminhos futuros para simulação de circuitos neurais humanos.
-
----
-
-## Licença
-
-O código deste projeto está disponível sob a licença **MIT**.
-
-Dados, modelos, APIs e datasets de terceiros utilizados pelo projeto permanecem sujeitos às suas respectivas licenças, termos de uso e condições de atribuição.
-
----
-
-<p align="center">
-
-**Connectome -> Spikes -> Behavior**
-
-</p>
+Ele explica o fluxo de dados, o backend, o frontend, o LIF, a ponte entre datasets e as limitações científicas do modelo.
