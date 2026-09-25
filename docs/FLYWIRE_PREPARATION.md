@@ -1,5 +1,8 @@
 # Preparação dos dados FlyWire
 
+O protocolo congelado e os resultados das condições estão em
+[`FLYWIRE_REPORT.md`](FLYWIRE_REPORT.md).
+
 ## Estado atual
 
 O código já tem a infraestrutura de integração:

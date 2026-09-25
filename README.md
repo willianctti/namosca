@@ -290,6 +290,43 @@ computacionais explícitas, não medidas sinápticas diretas.
 O comando de preparação e a validação dos arquivos estão em
 [`docs/FLYWIRE_PREPARATION.md`](docs/FLYWIRE_PREPARATION.md).
 
+## Relatório do circuito e glossário
+
+O protocolo congelado da primeirasub-rede, os resultados das condições
+`Pm`, `LMa`, `MTe52`, a Ablação e a contrafactual estão registrados em
+[`docs/FLYWIRE_REPORT.md`](docs/FLYWIRE_REPORT.md).
+
+O frontend agora também mantém um relatório local das execuções, destaca
+DMs com spike e oferece uma demonstração visual de resposta descendente.
+Essa demonstração é um proxy computacional explicitamente não biológico; ela
+não representa caminhada, pulo ou escape validados.
+
+| Condição | Spikes | Dm ativos |
+|---|---:|---:|
+| Pm baseline | 69 | 0 |
+| Pm sem inibição | 160 | 0 |
+| LMa2 isolado | 20 | 0 |
+| MTe52 isolado | 493 | 6 |
+| LMa2 com aresta forçada | 333 | 6 |
+
+A leitura correta é: o modelo local encontrou um gargalo computacional na
+aresta `LMa2 → MTe52`. A leitura incorreta seria afirmar que isso já prova
+comportamento de pulo ou fuga.
+
+Termos usados no projeto:
+
+- **GABA:** neurotransmissor geralmente inibitório; no LIF local funciona
+  como peso negativo;
+- **ACH:** acetilcolina, tratada como conexão não inibitória;
+- **OCT:** octopamina, também tratada como não inibitória;
+- **syn_count:** quantidade agregada de contatos sinápticos em uma aresta;
+- **Dm:** família de tipos celulares descendentes, não sinônimo automático
+  de músculo motor;
+- **LIF:** modelo matemático simplificado de neurônio;
+- **ablação:** retirada controlada de um efeito do modelo;
+- **contrafactual:** teste computacional que altera uma hipótese para medir
+  sua sensibilidade.
+
 ---
 
 ## Executando localmente
@@ -455,6 +492,9 @@ O NaMosca foi pensado como uma plataforma experimental incremental.
 
 ### Fase 4 — Neurociência computacional experimental
 
+- [x] Registrar baseline, ablação e contrafactual
+- [x] Exibir atividade descendente e caminhos topológicos
+- [x] Criar proxy visual de resposta, identificado como não biológico
 - [ ] Associar circuitos a comportamentos
 - [ ] Experimentar ablação de neurônios
 - [ ] Comparar diferentes modelos neuronais
@@ -580,7 +620,8 @@ namosca/
 |
 |-- docs/
 |   |-- API.md
-|   `-- FLYWIRE_PREPARATION.md
+|   |-- FLYWIRE_PREPARATION.md
+|   `-- FLYWIRE_REPORT.md
 |
 |-- LICENSE
 `-- README.md
