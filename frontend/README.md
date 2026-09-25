@@ -23,6 +23,8 @@ Abra `http://localhost:8080` com o backend em `http://localhost:8000`.
   existentes;
 - os spikes do LIF local são destacados em amarelo durante a reprodução dos
   frames e permanecem visíveis até a limpeza da cena;
+- candidatos `Dm`/descendentes são marcados em laranja e a interface mostra
+  quantos deles receberam spike;
 - o botão de limpeza remove os destaques e o gráfico de frames.
 
 A entrada inicial do LIF local é exploratória: ela usa os primeiros

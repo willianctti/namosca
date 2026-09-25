@@ -124,6 +124,7 @@
     .graph-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 9px; color: var(--muted); font-size: 10px; }
     .legend-dot { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: var(--cyan); }
     .legend-dot.spike { background: var(--yellow); }
+    .legend-dot.descending { background: #ffad70; }
     .legend-line { display: inline-block; width: 16px; height: 2px; margin: 0 4px 3px 0; background: #b58cff; }
     .legend-line.inhibitory { background: #ff7885; }
     .graph-help { margin-top: 10px; padding: 9px 10px; border-left: 2px solid var(--cyan); border-radius: 6px; color: var(--muted); background: #65f2ff0b; font-size: 11px; }
@@ -170,11 +171,14 @@
         <div class="graph-stat"><small>Conexões</small><strong id="flywireSynapses">—</strong></div>
         <div class="graph-stat"><small>Dataset</small><strong id="flywireDataset">—</strong></div>
         <div class="graph-stat"><small>Spikes</small><strong id="flywireSpikes">—</strong></div>
+        <div class="graph-stat"><small>Candidatos Dm</small><strong id="flywireDescending">—</strong></div>
+        <div class="graph-stat"><small>Dm ativos</small><strong id="flywireActiveDescending">—</strong></div>
       </div>
       <label class="field"><span class="label">Neurônios de entrada exploratórios</span><input id="flywireInputCount" type="number" min="1" max="64" step="1" value="8" /></label>
       <div class="graph-legend">
         <span><i class="legend-dot"></i>neurônio</span>
         <span><i class="legend-dot spike"></i>spike</span>
+        <span><i class="legend-dot descending"></i>candidato Dm</span>
         <span><i class="legend-line"></i>excitatória</span>
         <span><i class="legend-line inhibitory"></i>inibitória</span>
       </div>
@@ -183,7 +187,7 @@
         <ol>
           <li>Clique em <b>Simular LIF local</b> para injetar corrente em alguns pontos.</li>
           <li>Arraste a cena para girar e use a roda do mouse para aproximar.</li>
-          <li>Pontos amarelos indicam spikes e permanecem destacados até você limpar a cena; as linhas mostram conexões.</li>
+          <li>Pontos amarelos indicam spikes; laranja marca candidatos Dm/descendentes do FAFB.</li>
           <li>Use <b>Axobug · comparação</b> para ver a animação comportamental antiga.</li>
         </ol>
       </div>
@@ -301,7 +305,7 @@
       frames: $("framesBtn"), framesInfo: $("framesInfo"), frameChart: $("frameChart"), raw: $("rawResponse"), history: $("history"), clear: $("clearBtn"),
       mode: $("engineMode"), modeBadge: $("modeBadge"), activeSource: $("activeSource"), modeNote: $("modeNote"),
       flywirePanel: $("flywirePanel"), axobugExperiments: $("axobugExperiments"), responsePanel: $("response-panel"), loadFlywire: $("loadFlywireBtn"), simulateFlywire: $("simulateFlywireBtn"),
-      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"),
+      flywireNeurons: $("flywireNeurons"), flywireSynapses: $("flywireSynapses"), flywireDataset: $("flywireDataset"), flywireSpikes: $("flywireSpikes"), flywireDescending: $("flywireDescending"), flywireActiveDescending: $("flywireActiveDescending"),
       flywireInputCount: $("flywireInputCount"), flywireStatus: $("flywireStatus"), flywireFrameChart: $("flywireFrameChart")
     };
     let scene, camera, renderer, controls, fly, leftWing, rightWing, flyProboscis, shadowObstacle, flywireGroup;
@@ -309,7 +313,7 @@
     let shadowRun = { active: false, waiting: false, score: 0, phase: 0, pace: 0, escape: 0, calls: 0, sensed: false, last: 0, token: 0 };
     let lastBrain = null, lastRequest = null, history = [];
     let currentMode = "flywire";
-    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, playbackToken: 0, frameTimer: null };
+    let flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, playbackToken: 0, frameTimer: null };
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const fixed = (value, digits = 2) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
     const STIMULUS_INFO = {
@@ -416,19 +420,26 @@
         disposeObject(flywireGroup);
       }
       flywireGroup = null;
-      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, playbackToken: 0, frameTimer: null };
+      flywire = { loaded: false, network: null, nodes: null, nodeIndex: new Map(), colors: null, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay: null, playbackToken: 0, frameTimer: null };
       ui.flywireNeurons.textContent = "—";
       ui.flywireSynapses.textContent = "—";
       ui.flywireDataset.textContent = "—";
       ui.flywireSpikes.textContent = "—";
+      ui.flywireDescending.textContent = "—";
+      ui.flywireActiveDescending.textContent = "—";
       ui.flywireFrameChart.replaceChildren();
     }
 
-    function updateFlywireStats(network, result = null) {
+    function updateFlywireStats(network, result = null, activeIds = []) {
+      const descending = network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || "")));
+      const activeSet = new Set(activeIds.map(String));
+      const activeDescending = descending.filter(neuron => activeSet.has(String(neuron.id)));
       ui.flywireNeurons.textContent = String(network.neurons.length);
       ui.flywireSynapses.textContent = String(network.synapses.length);
       ui.flywireDataset.textContent = network.metadata?.dataset || "FAFB v783";
       ui.flywireSpikes.textContent = result ? String(result.stats?.total_spikes ?? 0) : "—";
+      ui.flywireDescending.textContent = String(descending.length);
+      ui.flywireActiveDescending.textContent = result ? String(activeDescending.length) : "—";
     }
 
     function renderFlywireGraph(network) {
@@ -457,6 +468,14 @@
       geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
       const nodes = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .065, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: .95 }));
       nodes.frustumCulled = false;
+      const descendingPositions = [];
+      neurons.forEach((neuron, index) => {
+        if (/^Dm/i.test(String(neuron.cell_type || ""))) descendingPositions.push(...positions[index]);
+      });
+      const descendingOverlay = descendingPositions.length
+        ? new THREE.Points(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(descendingPositions, 3)), new THREE.PointsMaterial({ color: 0xffad70, size: .045, sizeAttenuation: true, transparent: true, opacity: .9, depthTest: false }))
+        : null;
+      if (descendingOverlay) descendingOverlay.renderOrder = 4;
       const excitatory = [];
       const inhibitory = [];
       const nodeIndex = new Map(neurons.map((neuron, index) => [String(neuron.id), index]));
@@ -470,10 +489,11 @@
       const group = new THREE.Group();
       group.position.y = .15;
       group.add(nodes);
+      if (descendingOverlay) group.add(descendingOverlay);
       if (excitatory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(excitatory, 3)), new THREE.LineBasicMaterial({ color: 0xb58cff, transparent: true, opacity: .18, depthWrite: false })));
       if (inhibitory.length) group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(inhibitory, 3)), new THREE.LineBasicMaterial({ color: 0xff7885, transparent: true, opacity: .22, depthWrite: false })));
       flywireGroup = group;
-      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), persistent: new Set(), spikeOverlay: null, playbackToken: 0, frameTimer: null };
+      flywire = { loaded: true, network, nodes, nodeIndex, colors, flashes: new Map(), persistent: new Set(), spikeOverlay: null, descendingOverlay, playbackToken: 0, frameTimer: null };
       scene.add(group);
       updateFlywireStats(network);
       setMode(currentMode);
@@ -630,11 +650,11 @@
         const frames = Array.isArray(result.frames) ? result.frames : [];
         const spikeIds = [...new Set(frames.flatMap(frame => Array.isArray(frame.spikes) ? frame.spikes : []))];
         highlightPersistentFlywireSpikes(spikeIds);
-        updateFlywireStats(flywire.network, result);
+        updateFlywireStats(flywire.network, result, spikeIds);
         renderFlywireFrames(frames);
         playFlywireFrames(frames);
-        console.info("[FlyWire] LIF simulation", result.stats, { inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size });
-        ui.flywireStatus.textContent = `LIF local: ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos foram destacados. Entrada exploratória, não estímulo biológico validado.`;
+        console.info("[FlyWire] LIF simulation", result.stats, { inputNeurons: neuronIds.length, frameCount: frames.length, highlightedNodes: flywire.persistent.size, descendingCandidates: flywire.network.neurons.filter(neuron => /^Dm/i.test(String(neuron.cell_type || ""))).length, descendingHighlighted: ui.flywireActiveDescending.textContent });
+        ui.flywireStatus.textContent = `LIF local: ${result.stats.total_spikes} spikes em ${result.stats.responding_neurons} neurônios; ${flywire.persistent.size} pontos foram destacados, incluindo ${ui.flywireActiveDescending.textContent} candidatos Dm. Entrada exploratória, não estímulo biológico validado.`;
         setBackend("FlyWire local", "ok");
       } catch (error) {
         console.error("[FlyWire] simulation failed", error);
