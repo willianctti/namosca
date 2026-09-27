@@ -418,6 +418,7 @@
     const configuredApi = window.FLYBRAIN_API_URL || document.querySelector('meta[name="flybrain-api"]')?.content;
     const local = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.protocol === "file:";
     const API_URL = (configuredApi || (local ? "http://localhost:8000" : location.origin)).replace(/\/$/, "");
+    const ESP32_URL = "http://192.168.10.151"; // IP do ESP32
     const REPORT_KEY = "namosca-flywire-circuit-report-v1";
     const REFERENCE_REPORT = [
       { condition: "grupo Pm · baseline", spikes: 69, responding: 8, dmActive: 0, reachable: 6 },
@@ -670,6 +671,18 @@
       ui.flyBodyVisual.setAttribute("transform", `translate(0 ${bob.toFixed(2)}) rotate(${tilt.toFixed(2)} 120 82)`);
     }
 
+    async function notifyESP32LegMove(active, system) {
+      try {
+        await fetch(`${ESP32_URL}/leg-move`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active, system })
+        });
+      } catch (e) {
+        // ESP32 não está acessível - ignora silenciosamente
+      }
+    }
+
     function updateBehaviorDemo(dmActive, systems = null) {
       lastDmActive = Number(dmActive) || 0;
       if (systems) lastMotorSystems = systems;
@@ -685,8 +698,16 @@
         ui.flyBodyDemo.classList.remove("active");
       }
       ui.demoStatus.textContent = lastDmActive > 0
-        ? `Há ${lastDmActive} candidato(s) Dm ativo(s). O corpo real continua desconhecido; a animação usa “pernas” apenas como hipótese visual.`
+        ? `Há ${lastDmActive} candidato(s) Dm ativo(s). O corpo real continua desconhecido; a animação usa "pernas" apenas como hipótese visual.`
         : "Nenhum Dm ativo nesta condição; nenhum proxy será animado.";
+
+      // Notifica o ESP32 sobre movimento nas pernas
+      if (hasLeg) {
+        const activeSystem = ["front_leg", "middle_leg", "hind_leg"].find(s => Number(lastMotorSystems[s] || 0) > 0);
+        notifyESP32LegMove(true, activeSystem);
+      } else if (hasMappedSystem) {
+        notifyESP32LegMove(false, "none");
+      }
     }
 
     function playBehaviorDemo() {
