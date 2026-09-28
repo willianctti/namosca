@@ -420,7 +420,7 @@ Resultado esperado:
 - o backend simula uma sub-rede, não o FAFB inteiro;
 - o LIF é um modelo simples;
 - `syn_count` é transformado em peso por uma regra computacional;
-- o mapa usa神经系统 e tipos celulares, mas não um atlas muscular completo;
+- o mapa usa tipos celulares, mas não um atlas muscular completo;
 - a resposta do corpo é uma visualização conectômica;
 - não existe ainda validação completa com resposta muscular e comportamento observado;
 - a correspondência entre datasets é feita por tipos e informações anatômicas, não por root IDs compartilhados.
